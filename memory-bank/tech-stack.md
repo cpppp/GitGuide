@@ -4,43 +4,49 @@
 
 基于产品设计文档的需求分析，推荐以下技术栈组合：
 
-| 层级 | 技术选择 | 版本建议 |
-|:---|:---|:---|
-| **前端框架** | Streamlit | 1.40+ |
-| **Agent 框架** | LangChain + LangGraph | LangChain 1.0+, LangGraph 0.2+ |
-| **后端框架** | Python (集成于 Streamlit) | Python 3.11+ |
-| **AI 服务** | OpenAI API | GPT-4 / GPT-3.5-turbo |
-| **仓库分析** | GitPython + GitHub API | GitPython 3.1+ |
-| **缓存方案** | Redis / Streamlit Session | 7.0+ (可选) |
-| **部署平台** | Streamlit Cloud / Railway | - |
+| 层级           | 技术选择                      | 版本建议                           |
+| :----------- | :------------------------ | :----------------------------- |
+| **前端框架**     | Streamlit                 | 1.40+                          |
+| **Agent 框架** | LangChain + LangGraph     | LangChain 1.0+, LangGraph 0.2+ |
+| **后端框架**     | Python (集成于 Streamlit)    | Python 3.11+                   |
+| **AI 服务**    | OpenAI API                | glm-4.7                        |
+| **仓库分析**     | GitPython + GitHub API    | GitPython 3.1+                 |
+| **缓存方案**     | Redis / Streamlit Session | 7.0+ (可选)                      |
+| **部署平台**     | Streamlit Cloud / Railway | -                              |
 
 ## 2. 详细技术选型理由
 
 ### 2.1 前端技术栈
 
 #### Streamlit
+
 **推荐理由：**
+
 - **极速开发**：纯 Python 编写前端，无需学习 HTML/CSS/JavaScript
 - **AI 应用友好**：专为数据科学和 AI 应用设计，内置聊天组件
 - **MVP 理想选择**：从想法到原型只需几小时，大幅缩短开发周期
-- **内置组件丰富**：st.chat_input、st.chat_message 等组件完美适配 AI 问答场景
+- **内置组件丰富**：st.chat\_input、st.chat\_message 等组件完美适配 AI 问答场景
 - **热重载**：代码修改后自动刷新，开发体验流畅
 
 **替代方案对比：**
-| 方案 | 优势 | 劣势 | 推荐度 |
-|:---|:---|:---|:---|
-| Streamlit | 纯 Python，开发最快，AI 友好 | 定制性较低 | ⭐⭐⭐⭐⭐ (MVP) |
-| React + Vite | 生态成熟，定制性强 | 需要前后端分离，开发周期长 | ⭐⭐⭐⭐ (正式版) |
-| Gradio | ML 演示友好 | 布局灵活性不如 Streamlit | ⭐⭐⭐ |
+
+| 方案           | 优势                  | 劣势                | 推荐度         |
+| :----------- | :------------------ | :---------------- | :---------- |
+| Streamlit    | 纯 Python，开发最快，AI 友好 | 定制性较低             | ⭐⭐⭐⭐⭐ (MVP) |
+| React + Vite | 生态成熟，定制性强           | 需要前后端分离，开发周期长     | ⭐⭐⭐⭐ (正式版)  |
+| Gradio       | ML 演示友好             | 布局灵活性不如 Streamlit | ⭐⭐⭐         |
 
 **MVP → 正式版迁移路径：**
+
 - MVP 阶段使用 Streamlit 快速验证核心功能
 - 产品成熟后可迁移至 React + FastAPI 架构，提升用户体验和定制性
 
 ### 2.2 Agent 框架
 
 #### LangChain + LangGraph
+
 **推荐理由：**
+
 - **多 Agent 协作**：LangGraph 支持构建复杂的多 Agent 工作流
 - **工具调用**：内置 Tool 机制，方便 Agent 调用外部 API 和函数
 - **状态管理**：LangGraph 提供图状状态机，管理 Agent 间通信
@@ -82,30 +88,35 @@
 
 **Agent 职责划分：**
 
-| Agent | 职责 | 输入 | 输出 |
-|:---|:---|:---|:---|
-| **Orchestrator** | 协调各 Agent，管理整体流程 | 用户 URL | 最终结果 |
-| **Analyzer Agent** | 分析仓库结构、识别技术栈 | 仓库 URL | 项目元数据 |
-| **DocGen Agent** | 生成学习文档和启动指南 | 分析结果 | Markdown 文档 |
-| **Chat Agent** | 回答用户问题 | 用户问题 + 上下文 | 回答内容 |
+| Agent              | 职责               | 输入         | 输出          |
+| :----------------- | :--------------- | :--------- | :---------- |
+| **Orchestrator**   | 协调各 Agent，管理整体流程 | 用户 URL     | 最终结果        |
+| **Analyzer Agent** | 分析仓库结构、识别技术栈     | 仓库 URL     | 项目元数据       |
+| **DocGen Agent**   | 生成学习文档和启动指南      | 分析结果       | Markdown 文档 |
+| **Chat Agent**     | 回答用户问题           | 用户问题 + 上下文 | 回答内容        |
 
 ### 2.3 AI 服务
 
 #### OpenAI API
+
 **推荐理由：**
+
 - **效果最佳**：GPT-4 在代码理解和生成方面表现最优
 - **LangChain 原生支持**：无缝集成，开箱即用
 - **Function Calling**：支持 Agent 工具调用
 - **成本可控**：按使用量计费，MVP 阶段成本较低
 
 **替代方案：**
+
 - Claude API：代码能力接近，LangChain 同样支持
 - 开源模型（Ollama + LLaMA/Qwen）：本地部署，隐私性好，但性能略低
 
 ### 2.4 仓库分析
 
 #### GitPython + GitHub API
+
 **推荐理由：**
+
 - **GitPython**：纯 Python 实现，无需依赖系统 git
 - **GitHub API**：官方 API，稳定可靠
 - **LangChain Tool 封装**：可作为 Agent 工具使用
@@ -113,22 +124,27 @@
 ### 2.5 缓存方案
 
 #### Streamlit Session State (MVP)
+
 - **零配置**：内置会话状态管理
 - **适合 MVP**：无需额外依赖
 
 #### Redis (可选扩展)
+
 - **持久化缓存**：跨会话共享分析结果
 - **避免重复分析**：相同仓库直接返回缓存
 
 ### 2.6 部署平台
 
 #### Streamlit Cloud
+
 **推荐理由：**
+
 - **免费托管**：对开源项目完全免费
 - **一键部署**：连接 GitHub 自动部署
 - **专为 Streamlit 优化**：无需额外配置
 
 **替代方案：**
+
 - Railway：支持更多自定义配置，适合正式版
 - Docker + 云服务器：完全自主控制，适合大规模部署
 
@@ -380,23 +396,25 @@ DEBUG=true
 
 ## 8. 技术风险与应对
 
-| 风险 | 影响 | 应对方案 |
-|:---|:---|:---|
-| OpenAI API 限流 | AI 功能不可用 | 实现请求队列、降级到 GPT-3.5 |
-| GitHub API 限流 | 仓库分析失败 | 使用 Token 认证、缓存结果 |
-| 大仓库分析慢 | 用户体验差 | 显示进度条、限制文件大小、异步处理 |
-| Streamlit 性能 | 并发能力有限 | MVP 阶段可接受，正式版迁移至 FastAPI |
-| Agent 输出不稳定 | 文档质量波动 | 使用 structured output、添加校验逻辑 |
+| 风险            | 影响       | 应对方案                        |
+| :------------ | :------- | :-------------------------- |
+| OpenAI API 限流 | AI 功能不可用 | 实现请求队列、降级到 GPT-3.5          |
+| GitHub API 限流 | 仓库分析失败   | 使用 Token 认证、缓存结果            |
+| 大仓库分析慢        | 用户体验差    | 显示进度条、限制文件大小、异步处理           |
+| Streamlit 性能  | 并发能力有限   | MVP 阶段可接受，正式版迁移至 FastAPI    |
+| Agent 输出不稳定   | 文档质量波动   | 使用 structured output、添加校验逻辑 |
 
 ## 9. 技术栈优势总结
 
 ### MVP 阶段优势
+
 1. **开发效率极高**：Streamlit + LangChain 可在 3-5 天内完成 MVP
 2. **纯 Python 技术栈**：无需前后端分离，降低学习成本
 3. **AI 能力强大**：LangChain 多 Agent 架构，功能扩展灵活
 4. **部署零成本**：Streamlit Cloud 免费托管
 
 ### 迁移路径清晰
+
 - **前端**：Streamlit → React + Vite（提升用户体验）
 - **后端**：Streamlit 内置 → FastAPI（提升性能和并发）
 - **Agent**：LangChain 保持不变（架构成熟）
@@ -404,16 +422,19 @@ DEBUG=true
 ## 10. 后续优化方向
 
 ### MVP 后第一优先级
+
 - **迁移前端**：从 Streamlit 迁移至 React，提升定制性
 - **分离后端**：引入 FastAPI，支持更高并发
 
 ### 功能扩展
+
 - **支持更多模型**：集成 Claude、开源模型
 - **私有仓库**：OAuth 授权支持
 - **导出功能**：PDF、Markdown 导出
 - **代码图谱**：生成项目依赖关系图
 
 ### 性能优化
+
 - **引入 Redis**：持久化缓存分析结果
 - **异步处理**：Celery 任务队列
 - **CDN 加速**：静态资源分发

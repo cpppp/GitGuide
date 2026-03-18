@@ -8,8 +8,8 @@ load_dotenv()
 class Config:
     # OpenAI 配置（支持自定义 API）
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "glm-4.7")
-    OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://ark.cn-beijing.volces.com/api/coding/v3")
+    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
+    OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 
     # GitHub 配置
     GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")

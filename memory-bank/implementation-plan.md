@@ -1,482 +1,835 @@
 # GitGuide 项目实施计划
 
+> **文档版本**：v2.0\
+> **最后更新**：2026-03-18\
+> **更新说明**：基于 MVP 成功实现，重新规划后续迭代实施计划
+
+***
+
 ## 概述
 
-本文档将产品设计文档 (`product-design-document.md`) 和技术栈文档 (`tech-stack.md`) 转化为详细的、分步骤的实施计划。每个步骤都包含具体的验证方法，确保实现正确。
+本文档基于产品设计文档 v2.0 和迭代计划，详细规划 GitGuide 项目的后续实施步骤。MVP 阶段已完成，后续将按照 6 个迭代阶段逐步推进。
 
-**MVP 核心目标**：用户输入 GitHub 仓库 URL，系统生成学习文档和启动指南，并提供 AI 问答功能。
+**项目状态**：MVP 已完成 ✅
 
----
+**核心目标**：将 GitGuide 从 MVP 升级为功能完善、用户体验优秀的 GitHub 仓库分析工具。
 
-## 技术决策（已确认）
+***
 
-| 决策项 | 选择 | 原因 |
-|:---|:---|:---|
-| Agent 构建方式 | `create_agent` 或 LangChain 1.0+ 推荐方式 | 快速上手，LangChain 1.0+ 官方推荐 |
-| 工具调用方式 | 简单同步调用 | MVP 阶段快速实现功能验证 |
-| 缓存策略 | Streamlit Session State | MVP 阶段无需额外依赖 |
-| 测试仓库 | `https://github.com/666ghj/DeepSearchAgent-Demo` | 用户指定 |
-| 错误处理 | 显示具体错误信息 | 便于调试和用户体验 |
+## MVP 阶段回顾（已完成）
 
----
+### 已实现功能
 
-## 阶段一：环境搭建与基础项目结构
+| 功能     | 状态 | 说明                    |
+| :----- | :- | :-------------------- |
+| URL 输入 | ✅  | 支持公开 GitHub 仓库 URL 输入 |
+| 一键生成   | ✅  | 点击按钮自动分析仓库            |
+| 学习文档   | ✅  | 项目概述、技术栈、目录结构、依赖项     |
+| 启动指南   | ✅  | 环境要求、安装命令、运行步骤        |
+| AI 问答  | ✅  | 基于 LangChain 的智能问答    |
 
-### 步骤 1.1：创建虚拟环境并安装依赖
+***
 
-**任务**：
-1. 在项目根目录创建 Python 虚拟环境
-2. 创建 `requirements.txt` 文件，添加以下核心依赖：
-   - `streamlit>=1.40.0`
-   - `langchain>=1.0.0`
-   - `langchain-openai>=0.3.0`
-   - `langgraph>=0.2.0`
-   - `openai>=1.57.0`
-   - `GitPython>=3.1.41`
-   - `PyGithub>=2.1.1`
-   - `python-dotenv>=1.0.0`
-   - `pydantic>=2.6.0`
-3. 安装所有依赖：`pip install -r requirements.txt`
+## 迭代一：用户体验优化（v1.1）
 
-**注意**：LangChain 1.0.x 版本有重大变化：
-- 使用 `langchain_core.tools` 替代 `langchain.tools`
-- 使用 `langchain_core.messages` 替代 `langchain.schema`
-- 推荐使用 `create_agent` 或 `AgentExecutor`
+**优先级**：高\
+**预计工作量**：3 天\
+**目标**：提升用户等待体验，完善错误处理
 
-**验证方法**：运行 `pip list` 确认所有包已安装。
-
----
-
-### 步骤 1.2：配置环境变量
+### 步骤 1.1：进度反馈与状态管理
 
 **任务**：
-1. 创建 `.env` 文件
-2. 添加 `OPENAI_API_KEY=your_openai_api_key`
-3. 可选：添加 `GITHUB_TOKEN=your_github_token` 提高 API 限流
-4. 创建 `.env.example` 文件作为模板
+
+1. 在首页添加进度条组件
+2. 实现分阶段状态提示：
+   - 阶段 1：正在获取仓库信息... (20%)
+   - 阶段 2：正在分析目录结构... (40%)
+   - 阶段 3：正在生成学习文档... (60%)
+   - 阶段 4：正在生成启动指南... (80%)
+   - 阶段 5：完成！ (100%)
+3. 添加预计剩余时间显示
+4. 实现取消分析任务功能
+
+**实现方案**：
+
+```python
+# pages/1_🏠_Home.py
+import streamlit as st
+import time
+
+def analyze_with_progress(repo_url):
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    # 阶段 1
+    status_text.text("🔍 正在获取仓库信息...")
+    progress_bar.progress(20)
+    repo_info = get_repo_info(repo_url)
+    
+    # 阶段 2
+    status_text.text("📁 正在分析目录结构...")
+    progress_bar.progress(40)
+    structure = analyze_structure(repo_url)
+    
+    # 阶段 3
+    status_text.text("📝 正在生成学习文档...")
+    progress_bar.progress(60)
+    learning_doc = generate_learning_doc(repo_info, structure)
+    
+    # 阶段 4
+    status_text.text("🚀 正在生成启动指南...")
+    progress_bar.progress(80)
+    setup_guide = generate_setup_guide(repo_info, structure)
+    
+    # 完成
+    status_text.text("✅ 分析完成！")
+    progress_bar.progress(100)
+    
+    return {"learning_doc": learning_doc, "setup_guide": setup_guide}
+```
 
 **验证方法**：
+
+- 输入测试仓库 URL，确认进度条正常显示
+- 确认各阶段状态提示清晰
+- 确认取消按钮可中断分析
+
+***
+
+### 步骤 1.2：错误处理与友好提示
+
+**任务**：
+
+1. 实现 URL 格式实时验证
+2. 添加仓库不存在/私有仓库提示
+3. 实现 API 限流提示和重试建议
+4. 添加网络错误自动重试机制
+5. 实现错误日志记录
+
+**实现方案**：
+
 ```python
-from dotenv import load_dotenv
+# core/validators.py
+import re
+
+def validate_github_url(url):
+    """验证 GitHub URL 格式"""
+    if not url:
+        return False, "请输入 GitHub 仓库 URL"
+    
+    patterns = [
+        r'^https?://github\.com/[^/]+/[^/]+/?$',
+        r'^https?://github\.com/[^/]+/[^/]+/tree/[^/]+/?$'
+    ]
+    
+    for pattern in patterns:
+        if re.match(pattern, url):
+            return True, "✅ URL 格式正确"
+    
+    return False, "❌ 请输入有效的 GitHub 仓库 URL（如：https://github.com/user/repo）"
+
+def handle_api_error(error):
+    """处理 API 错误并返回友好提示"""
+    error_messages = {
+        "rate_limit": "GitHub API 请求次数已达上限，请稍后再试或配置 GITHUB_TOKEN",
+        "not_found": "仓库不存在或为私有仓库，请检查 URL 是否正确",
+        "network": "网络连接失败，请检查网络后重试",
+        "timeout": "请求超时，仓库可能过大，请尝试较小的仓库"
+    }
+    
+    error_type = classify_error(error)
+    return error_messages.get(error_type, f"发生错误: {str(error)}")
+```
+
+**验证方法**：
+
+- 输入无效 URL，确认显示错误提示
+- 输入私有仓库 URL，确认提示正确
+- 模拟网络错误，确认重试机制生效
+
+***
+
+### 步骤 1.3：历史记录功能
+
+**任务**：
+
+1. 创建历史记录存储模块
+2. 实现历史记录列表展示
+3. 添加快速重新分析功能
+4. 实现清除历史记录选项
+
+**实现方案**：
+
+```python
+# core/history.py
+import json
 import os
-load_dotenv()
-print(os.getenv("OPENAI_API_KEY"))  # 应输出非 None
+from datetime import datetime
+
+HISTORY_FILE = "data/history.json"
+
+def save_to_history(repo_url, result):
+    """保存分析结果到历史记录"""
+    history = load_history()
+    history.insert(0, {
+        "url": repo_url,
+        "name": result.get("project_name", "Unknown"),
+        "timestamp": datetime.now().isoformat(),
+        "language": result.get("language", "Unknown")
+    })
+    # 只保留最近 20 条
+    history = history[:20]
+    
+    os.makedirs("data", exist_ok=True)
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, ensure_ascii=False, indent=2)
+
+def load_history():
+    """加载历史记录"""
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+def clear_history():
+    """清除历史记录"""
+    if os.path.exists(HISTORY_FILE):
+        os.remove(HISTORY_FILE)
 ```
-
----
-
-### 步骤 1.3：创建项目目录结构
-
-**任务**：创建以下目录和空 `__init__.py` 文件：
-```
-GitGuide/
-├── app.py
-├── pages/
-│   ├── 1_🏠_Home.py
-│   ├── 2_📚_Documentation.py
-│   └── 3_💬_Chat.py
-├── agents/
-│   ├── __init__.py
-│   ├── orchestrator.py
-│   ├── analyzer.py
-│   ├── doc_generator.py
-│   └── chat.py
-├── tools/
-│   ├── __init__.py
-│   ├── github_tools.py
-│   ├── git_tools.py
-│   └── file_tools.py
-├── core/
-│   ├── __init__.py
-│   ├── config.py
-│   └── utils.py
-├── memory-bank/
-├── requirements.txt
-├── .env
-└── .env.example
-```
-
-**验证方法**：`ls -R` 确认目录结构正确。
-
----
-
-### 步骤 1.4：创建 Streamlit 基础页面
-
-**任务**：
-1. 在 `app.py` 中添加页面配置：
-   ```python
-   import streamlit as st
-   st.set_page_config(page_title="GitGuide", page_icon="🚀")
-   ```
-2. 在 `pages/1_🏠_Home.py` 中创建简单首页，显示标题和说明文字
-3. 确保 Streamlit 可以正常启动
-
-**验证方法**：运行 `streamlit run app.py`，确认页面可以正常打开。
-
----
-
-## 阶段二：GitHub API 工具层（同步调用）
-
-### 步骤 2.1：实现 GitHub 仓库信息获取工具
-
-**任务**：
-1. 在 `tools/github_tools.py` 中实现 `get_repo_info(repo_url: str)` 函数
-2. 使用 PyGithub 库（同步调用）
-3. 返回以下信息：
-   - 仓库名称
-   - 仓库描述
-   - 主要编程语言
-   - Star 数量
-   - README 内容（如果有）
-4. 添加异常处理，捕获并显示具体错误：
-   - `GithubException` - GitHub API 错误
-   - `InvalidUrlException` - 无效 URL
-   - 其他异常
 
 **验证方法**：
+
+- 分析多个仓库，确认历史记录正确保存
+- 点击历史记录项，确认可快速重新分析
+- 清除历史记录，确认数据被删除
+
+***
+
+### 步骤 1.4：收藏仓库功能
+
+**任务**：
+
+1. 创建收藏存储模块
+2. 在文档页面添加收藏按钮
+3. 创建收藏列表页面
+4. 实现收藏数据持久化
+
+**实现方案**：
+
 ```python
-from tools.github_tools import get_repo_info
-result = get_repo_info("https://github.com/666ghj/DeepSearchAgent-Demo")
-print(result.keys())  # 应包含: name, description, language, stars, readme
+# core/favorites.py
+import json
+import os
+
+FAVORITES_FILE = "data/favorites.json"
+
+def add_favorite(repo_url, repo_info):
+    """添加收藏"""
+    favorites = load_favorites()
+    if not any(f["url"] == repo_url for f in favorites):
+        favorites.append({
+            "url": repo_url,
+            "name": repo_info.get("name", "Unknown"),
+            "language": repo_info.get("language", "Unknown"),
+            "added_at": datetime.now().isoformat()
+        })
+        save_favorites(favorites)
+        return True
+    return False
+
+def remove_favorite(repo_url):
+    """取消收藏"""
+    favorites = load_favorites()
+    favorites = [f for f in favorites if f["url"] != repo_url]
+    save_favorites(favorites)
+
+def is_favorited(repo_url):
+    """检查是否已收藏"""
+    favorites = load_favorites()
+    return any(f["url"] == repo_url for f in favorites)
 ```
-
----
-
-### 步骤 2.2：实现文件内容获取工具
-
-**任务**：
-1. 在 `tools/github_tools.py` 中实现 `get_file_content(repo_url: str, file_path: str)` 函数
-2. 返回指定文件的内容
-3. 限制单个文件大小不超过 100KB（返回前 N 字符）
-4. 添加异常处理
-
-**验证方法**：获取项目的 `README.md` 或 `requirements.txt` 内容。
-
----
-
-### 步骤 2.3：实现目录结构分析工具
-
-**任务**：
-1. 在 `tools/github_tools.py` 中实现 `get_repo_contents(repo_url: str, path: str = "")` 函数
-2. 返回仓库目录结构（递归获取，深度限制为 2 层）
-3. 过滤掉：`node_modules`, `__pycache__`, `.git`, `.venv`, `dist`, `build`
-4. 返回结构化数据（如嵌套字典或列表）
-
-**验证方法**：确认返回的目录结构包含主要目录且已过滤无关目录。
-
----
-
-## 阶段三：LangChain Agent 实现
-
-### 步骤 3.1：创建 LLM 客户端
-
-**任务**：
-1. 在 `core/config.py` 中：
-   ```python
-   from langchain_openai import ChatOpenAI
-   from dotenv import load_dotenv
-   import os
-
-   load_dotenv()
-
-   def get_llm(model: str = "gpt-4"):
-       return ChatOpenAI(model=model)
-   ```
-2. 添加模型降级逻辑（可选）：如果 gpt-4 失败，尝试 gpt-3.5-turbo
 
 **验证方法**：
+
+- 点击收藏按钮，确认收藏成功
+- 刷新页面，确认收藏状态保持
+- 在收藏列表查看已收藏仓库
+
+***
+
+## 迭代二：功能增强（v1.2）
+
+**优先级**：高\
+**预计工作量**：5 天\
+**目标**：增加导出功能、可视化、主题切换
+
+### 步骤 2.1：导出功能
+
+**任务**：
+
+1. 实现 Markdown 导出
+2. 实现 PDF 导出
+3. 实现 HTML 导出
+4. 添加导出按钮到文档页面
+
+**实现方案**：
+
 ```python
-from core.config import get_llm
-llm = get_llm()
-response = llm.invoke("你好")
-print(response.content)  # 应返回 AI 回复
+# core/export.py
+from datetime import datetime
+
+def export_to_markdown(result):
+    """导出为 Markdown"""
+    content = f"""# {result.get('project_name', '项目分析报告')}
+
+> 生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+> 仓库地址：{result.get('repo_url', '')}
+
+---
+
+## 📋 项目概述
+
+{result.get('overview', '暂无概述')}
+
+---
+
+## 🔧 技术栈
+
+{result.get('tech_stack', '暂无技术栈信息')}
+
+---
+
+## 📁 目录结构
+
+```
+
+{result.get('directory\_structure', '暂无目录结构')}
+
 ```
 
 ---
 
-### 步骤 3.2：定义 Agent 工具
+## 🚀 启动指南
 
-**任务**：
-1. 在 `tools/github_tools.py` 中使用 `langchain_core.tools` 装饰器：
-   ```python
-   from langchain_core.tools import tool
-
-   @tool
-   def get_repo_info(repo_url: str) -> str:
-       """获取 GitHub 仓库的基本信息"""
-       # 实现...
-   ```
-2. 将所有工具定义为 `@tool` 装饰器函数
-3. 工具函数返回字符串（便于 Agent 处理）
-
-**验证方法**：确认工具函数可以用 `.invoke()` 调用。
+{result.get('setup_guide', '暂无启动指南')}
 
 ---
 
-### 步骤 3.3：实现 Analyzer Agent
+*本文档由 GitGuide 自动生成*
+"""
+    return content
 
-**任务**：
-1. 在 `agents/analyzer.py` 中：
-   ```python
-   from langchain_openai import ChatOpenAI
-   from langchain_core.tools import tool
-   from langchain.agents import create_agent
-
-   # 工具列表
-   tools = [get_repo_info, get_file_content, get_repo_contents]
-
-   # 创建 Agent
-   llm = ChatOpenAI(model="gpt-4")
-   agent = create_agent(llm, tools, prompt="你是一个仓库分析专家...")
-   ```
-2. Agent 的 prompt 应明确要求：
-   - 识别项目类型（Node.js, Python, Java, Go, Docker）
-   - 解析依赖关系
-   - 分析目录结构
-   - 输出结构化结果（JSON 格式）
+def export_to_html(result):
+    """导出为 HTML"""
+    md_content = export_to_markdown(result)
+    # 使用 markdown 库转换
+    import markdown
+    html_content = markdown.markdown(md_content)
+    
+    html_template = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{result.get('project_name', '项目分析报告')}</title>
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }}
+        pre {{ background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; }}
+        code {{ background: #f5f5f5; padding: 2px 6px; border-radius: 3px; }}
+    </style>
+</head>
+<body>
+    {html_content}
+</body>
+</html>"""
+    return html_template
+```
 
 **验证方法**：
+
+- 点击导出 Markdown，确认文件下载正确
+- 点击导出 PDF，确认格式正确
+- 点击导出 HTML，确认可在浏览器打开
+
+***
+
+### 步骤 2.2：代码图谱可视化
+
+**任务**：
+
+1. 实现目录树可视化
+2. 实现模块依赖关系图
+3. 添加文件大小分布图
+4. 创建新的图谱标签页
+
+**实现方案**：
+
 ```python
-from agents.analyzer import agent
-result = agent.invoke({"input": "分析 https://github.com/666ghj/DeepSearchAgent-Demo"})
-print(result["output"])
+# core/visualization.py
+import plotly.express as px
+import plotly.graph_objects as go
+
+def create_directory_tree(structure):
+    """创建目录树可视化"""
+    # 使用 plotly 创建树形图
+    labels = []
+    parents = []
+    
+    def traverse(node, parent=""):
+        for name, children in node.items():
+            labels.append(name)
+            parents.append(parent)
+            if children:
+                traverse(children, name)
+    
+    traverse(structure)
+    
+    fig = go.Figure(go.Treemap(
+        labels=labels,
+        parents=parents,
+        root_color="lightgrey"
+    ))
+    return fig
+
+def create_dependency_graph(dependencies):
+    """创建依赖关系图"""
+    import networkx as nx
+    
+    G = nx.DiGraph()
+    for dep in dependencies:
+        G.add_edge(dep['from'], dep['to'])
+    
+    # 使用 plotly 绘制
+    pos = nx.spring_layout(G)
+    
+    edge_x = []
+    edge_y = []
+    for edge in G.edges():
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=edge_x, y=edge_y, mode='lines', line=dict(width=0.5, color='#888')))
+    
+    return fig
 ```
-
----
-
-### 步骤 3.4：实现 DocGen Agent
-
-**任务**：
-1. 在 `agents/doc_generator.py` 中创建 Agent
-2. 输入：Analyzer 的输出 + 原始仓库信息
-3. 输出：
-   - **学习文档**：项目概述、技术栈、目录结构、核心模块
-   - **启动指南**：环境要求、安装步骤、运行命令
-4. 使用 `create_agent` 或直接使用 LLM + prompt
-
-**验证方法**：输入测试项目，确认生成包含必要章节的文档。
-
----
-
-### 步骤 3.5：实现 Chat Agent
-
-**任务**：
-1. 在 `agents/chat.py` 中创建 Agent
-2. 输入：用户问题 + 项目上下文（README + 分析结果）
-3. 输出：回答用户关于项目的问题
 
 **验证方法**：
+
+- 分析仓库后，确认图谱标签页显示
+- 确认目录树可视化正确
+- 确认依赖关系图可交互
+
+***
+
+### 步骤 2.3：深色模式
+
+**任务**：
+
+1. 实现深色/浅色主题切换
+2. 添加主题切换按钮
+3. 保存用户主题偏好
+
+**实现方案**：
+
 ```python
-from agents.chat import chat_agent
-response = chat_agent.invoke({
-    "input": "这个项目是用来做什么的？",
-    "context": "项目是一个..."
-})
-print(response["output"])
+# core/theme.py
+import streamlit as st
+
+def apply_theme():
+    """应用主题"""
+    theme = st.session_state.get("theme", "light")
+    
+    if theme == "dark":
+        st.markdown("""
+        <style>
+        .stApp {
+            background-color: #1E1E1E;
+            color: #FFFFFF;
+        }
+        .stTextInput > div > div > input {
+            background-color: #2D2D2D;
+            color: #FFFFFF;
+        }
+        .stButton > button {
+            background-color: #3D3D3D;
+            color: #FFFFFF;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+def toggle_theme():
+    """切换主题"""
+    current = st.session_state.get("theme", "light")
+    st.session_state["theme"] = "dark" if current == "light" else "light"
 ```
 
----
+**验证方法**：
 
-### 步骤 3.6：实现 Orchestrator
+- 点击主题切换按钮，确认界面颜色变化
+- 刷新页面，确认主题设置保持
 
-**任务**：
-1. 在 `agents/orchestrator.py` 中：
-   ```python
-   def run(repo_url: str) -> dict:
-       # 1. 调用 Analyzer
-       analysis = analyzer_agent.invoke({"input": f"分析 {repo_url}"})
+***
 
-       # 2. 调用 DocGen
-       docs = docgen_agent.invoke({
-           "input": f"生成文档，仓库信息: {analysis['output']}"
-       })
-
-       # 3. 返回结果
-       return {
-           "analysis": analysis["output"],
-           "learning_doc": docs["learning_doc"],
-           "setup_guide": docs["setup_guide"]
-       }
-   ```
-2. 协调 Analyzer → DocGen 的工作流程
-3. 添加异常处理，每步失败时显示具体错误
-
-**验证方法**：传入测试仓库 URL，确认返回完整结果。
-
----
-
-## 阶段四：Streamlit 页面实现
-
-### 步骤 4.1：实现首页（URL 输入）
+### 步骤 2.4：多语言支持
 
 **任务**：
-1. 在 `pages/1_🏠_Home.py` 中：
-   ```python
-   import streamlit as st
-   from agents.orchestrator import run
 
-   st.title("🚀 GitGuide")
-   st.markdown("快速上手任意 GitHub 仓库")
+1. 创建语言配置文件
+2. 实现界面语言切换
+3. 实现文档语言选择
+4. 实现 AI 回答语言适配
 
-   url = st.text_input("输入 GitHub 仓库 URL", placeholder="https://github.com/user/repo")
+**实现方案**：
 
-   if st.button("生成文档", type="primary"):
-       if url:
-           with st.spinner("正在分析仓库..."):
-               try:
-                   result = run(url)
-                   st.session_state["analysis_result"] = result
-                   st.switch_page("pages/2_📚_Documentation.py")
-               except Exception as e:
-                   st.error(f"分析失败: {str(e)}")
-   ```
+```python
+# core/i18n.py
 
-**验证方法**：输入 `https://github.com/666ghj/DeepSearchAgent-Demo`，确认跳转到文档页面。
+LANGUAGES = {
+    "zh": {
+        "app_title": "🚀 GitGuide",
+        "app_subtitle": "快速上手任意 GitHub 仓库",
+        "input_label": "GitHub 仓库 URL",
+        "input_placeholder": "https://github.com/user/repo",
+        "generate_btn": "生成文档",
+        "learning_doc_tab": "学习文档",
+        "setup_guide_tab": "启动指南",
+        "chat_placeholder": "问关于这个项目的问题...",
+        "history_title": "历史记录",
+        "favorites_title": "收藏仓库"
+    },
+    "en": {
+        "app_title": "🚀 GitGuide",
+        "app_subtitle": "Quick Start for Any GitHub Repository",
+        "input_label": "GitHub Repository URL",
+        "input_placeholder": "https://github.com/user/repo",
+        "generate_btn": "Generate Docs",
+        "learning_doc_tab": "Learning Docs",
+        "setup_guide_tab": "Setup Guide",
+        "chat_placeholder": "Ask questions about this project...",
+        "history_title": "History",
+        "favorites_title": "Favorites"
+    }
+}
 
----
+def get_text(key, lang="zh"):
+    """获取多语言文本"""
+    return LANGUAGES.get(lang, LANGUAGES["zh"]).get(key, key)
+```
 
-### 步骤 4.2：实现文档展示页面
+**验证方法**：
 
-**任务**：
-1. 在 `pages/2_📚_Documentation.py` 中：
-   ```python
-   import streamlit as st
+- 切换语言，确认界面文本变化
+- 确认文档生成语言正确
+- 确认 AI 回答语言适配
 
-   st.title("📚 学习文档")
+***
 
-   result = st.session_state.get("analysis_result")
-   if not result:
-       st.warning("请先从首页生成文档")
-       st.stop()
+## 迭代三：分析能力提升（v2.0）
 
-   tab1, tab2 = st.tabs(["学习文档", "启动指南"])
+**优先级**：中\
+**预计工作量**：9 天\
+**目标**：提供更深入的代码分析能力
 
-   with tab1:
-       st.markdown(result.get("learning_doc", ""))
-
-   with tab2:
-       setup = result.get("setup_guide", "")
-       st.markdown(setup)
-   ```
-
-**验证方法**：从首页进入，确认两个标签页都显示内容。
-
----
-
-### 步骤 4.3：实现 AI 问答页面
-
-**任务**：
-1. 在 `pages/3_💬_Chat.py` 中：
-   ```python
-   import streamlit as st
-   from agents.chat import chat_agent
-
-   st.title("💬 AI 问答")
-
-   if "messages" not in st.session_state:
-       st.session_state.messages = []
-
-   for msg in st.session_state.messages:
-       with st.chat_message(msg["role"]):
-           st.markdown(msg["content"])
-
-   if prompt := st.chat_input("问关于这个项目的问题..."):
-       st.session_state.messages.append({"role": "user", "content": prompt})
-
-       with st.chat_message("user"):
-           st.markdown(prompt)
-
-       with st.chat_message("assistant"):
-       # 调用 Chat Agent
-       ```
-
-**验证方法**：提问"如何运行这个项目？"，确认 AI 返回回答。
-
----
-
-## 阶段五：测试与验证
-
-### 步骤 5.1：端到端流程测试
+### 步骤 3.1：深度代码分析
 
 **任务**：
-1. 使用测试仓库：`https://github.com/666ghj/DeepSearchAgent-Demo`
-2. 完整运行：
-   - 首页输入 URL
-   - 点击生成
-   - 跳转到文档页面
-   - 查看学习文档和启动指南
-3. 验证：
-   - 分析是否成功完成
-   - 文档内容是否完整
-   - 启动指南命令是否正确
 
-**验证方法**：记录测试结果，确认无报错。
+1. 实现函数/类关系分析
+2. 实现代码质量评分
+3. 实现潜在问题检测
+4. 实现最佳实践建议
 
----
+**实现方案**：
 
-### 步骤 5.2：AI 问答功能测试
+```python
+# tools/code_analyzer.py
+import ast
+from typing import Dict, List
+
+class CodeAnalyzer:
+    def analyze_python_file(self, code: str) -> Dict:
+        """分析 Python 代码"""
+        tree = ast.parse(code)
+        
+        functions = []
+        classes = []
+        imports = []
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef):
+                functions.append({
+                    "name": node.name,
+                    "args": [arg.arg for arg in node.args.args],
+                    "docstring": ast.get_docstring(node),
+                    "complexity": self._calculate_complexity(node)
+                })
+            elif isinstance(node, ast.ClassDef):
+                classes.append({
+                    "name": node.name,
+                    "methods": [n.name for n in node.body if isinstance(n, ast.FunctionDef)],
+                    "docstring": ast.get_docstring(node)
+                })
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                imports.append(self._get_import_name(node))
+        
+        return {
+            "functions": functions,
+            "classes": classes,
+            "imports": imports,
+            "lines_of_code": len(code.splitlines()),
+            "quality_score": self._calculate_quality_score(functions, classes)
+        }
+    
+    def _calculate_complexity(self, node) -> int:
+        """计算圈复杂度"""
+        complexity = 1
+        for child in ast.walk(node):
+            if isinstance(child, (ast.If, ast.While, ast.For, ast.ExceptHandler)):
+                complexity += 1
+        return complexity
+```
+
+**验证方法**：
+
+- 分析 Python 项目，确认函数/类列表正确
+- 确认代码质量评分合理
+- 确认问题检测准确
+
+***
+
+### 步骤 3.2：API 文档生成
 
 **任务**：
-1. 在问答页面提问：
-   - "这个项目是用来做什么的？"
-   - "如何在本地运行这个项目？"
-   - "主要依赖有哪些？"
-2. 验证回答是否基于仓库实际内容
 
-**验证方法**：检查 AI 回答的相关性。
+1. 识别 REST API 端点
+2. 提取函数签名和文档字符串
+3. 生成 API 使用示例
+4. 支持 OpenAPI/Swagger 格式
 
----
+**实现方案**：
 
-## 阶段六：MVP 完成
+```python
+# tools/api_extractor.py
+import re
+from typing import List, Dict
 
-### 步骤 6.1：创建 README.md
+class APIExtractor:
+    def extract_fastapi_routes(self, code: str) -> List[Dict]:
+        """从 FastAPI 代码提取路由"""
+        routes = []
+        
+        # 匹配 @app.get, @app.post 等
+        pattern = r'@(?:app|router)\.(get|post|put|delete|patch)\(["\']([^"\']+)["\']\)'
+        
+        for match in re.finditer(pattern, code):
+            method = match.group(1).upper()
+            path = match.group(2)
+            
+            # 提取函数定义
+            func_start = match.end()
+            func_match = re.search(r'def\s+(\w+)\s*\(([^)]*)\)', code[func_start:])
+            
+            if func_match:
+                routes.append({
+                    "method": method,
+                    "path": path,
+                    "function": func_match.group(1),
+                    "params": func_match.group(2)
+                })
+        
+        return routes
+    
+    def generate_openapi_spec(self, routes: List[Dict]) -> Dict:
+        """生成 OpenAPI 规范"""
+        spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API Documentation", "version": "1.0.0"},
+            "paths": {}
+        }
+        
+        for route in routes:
+            path = route["path"]
+            if path not in spec["paths"]:
+                spec["paths"][path] = {}
+            
+            spec["paths"][path][route["method"].lower()] = {
+                "summary": f"{route['method']} {path}",
+                "operationId": route["function"]
+            }
+        
+        return spec
+```
+
+**验证方法**：
+
+- 分析 FastAPI 项目，确认路由提取正确
+- 确认 OpenAPI 规范生成正确
+
+***
+
+### 步骤 3.3：测试覆盖率分析
 
 **任务**：
-1. 在项目根目录创建 README.md
-2. 包含：项目简介、功能列表、技术栈、快速开始指南、环境变量说明
 
-**验证方法**：README.md 完整可读。
+1. 检测测试文件
+2. 分析测试覆盖率（如果有配置）
+3. 提供测试建议
+4. 识别未测试的关键模块
 
----
+**验证方法**：
 
-### 步骤 6.2：部署到 Streamlit Cloud
+- 分析有测试的项目，确认测试文件识别
+- 确认测试建议合理
+
+***
+
+### 步骤 3.4：性能建议
 
 **任务**：
-1. 推送代码到 GitHub
-2. 登录 Streamlit Cloud
-3. 关联仓库并部署
-4. 配置环境变量（OPENAI_API_KEY）
 
-**验证方法**：通过公开 URL 访问应用，确认功能正常。
+1. 识别性能瓶颈
+2. 依赖版本检查
+3. 安全漏洞扫描
+4. 优化建议生成
 
----
+**验证方法**：
+
+- 分析项目，确认性能问题识别
+- 确认依赖版本检查正确
+
+***
+
+## 迭代四：协作与分享（v2.1）
+
+**优先级**：中\
+**预计工作量**：2 天
+
+### 步骤 4.1：分享分析结果
+
+**任务**：
+
+1. 生成分享链接
+2. 生成二维码
+3. 添加社交媒体分享按钮
+
+**验证方法**：
+
+- 确认分享链接可访问
+- 确认二维码可扫描
+
+***
+
+### 步骤 4.2：用户反馈系统
+
+**任务**：
+
+1. 文档质量评分
+2. AI 回答满意度反馈
+3. 问题报告功能
+
+**验证方法**：
+
+- 确认评分功能正常
+- 确认反馈数据保存
+
+***
+
+## 迭代五：技术改进（v2.2）
+
+**优先级**：中\
+**预计工作量**：4.5 天
+
+### 步骤 5.1：缓存机制优化
+
+**任务**：
+
+1. Redis 缓存集成
+2. 分析结果持久化
+3. 智能缓存失效
+
+**验证方法**：
+
+- 确认缓存命中时响应更快
+- 确认缓存失效逻辑正确
+
+***
+
+### 步骤 5.2：异步处理
+
+**任务**：
+
+1. 后台任务队列
+2. WebSocket 实时推送
+3. 超时处理
+
+**验证方法**：
+
+- 确认大仓库分析不阻塞
+- 确认进度实时更新
+
+***
+
+### 步骤 5.3：支持更多 LLM
+
+**任务**：
+
+1. 支持 Claude API
+2. 支持本地模型（Ollama）
+3. 支持更多国产模型
+
+**验证方法**：
+
+- 确认模型切换正常
+- 确认各模型回答质量
+
+***
 
 ## 实施检查清单
 
-- [ ] 环境变量正确配置
-- [ ] Streamlit 应用可以启动
-- [ ] 可以分析 GitHub 仓库 `https://github.com/666ghj/DeepSearchAgent-Demo`
-- [ ] 文档页面正确显示学习文档和启动指南
-- [ ] AI 问答功能正常工作
-- [ ] 端到端流程测试通过
-- [ ] README.md 已创建
-- [ ] 已部署到 Streamlit Cloud
+### 迭代一检查项
 
----
+- [ ] 进度条正常显示
+- [ ] 状态提示清晰
+- [ ] 错误处理友好
+- [ ] 历史记录功能正常
+- [ ] 收藏功能正常
 
-## 错误处理示例
+### 迭代二检查项
 
-所有 API 调用都应捕获异常并显示具体信息：
+- [ ] Markdown 导出正常
+- [ ] PDF 导出正常
+- [ ] 代码图谱可视化
+- [ ] 深色模式切换
+- [ ] 多语言支持
 
-```python
-try:
-    result = get_repo_info(url)
-except Exception as e:
-    st.error(f"获取仓库信息失败: {type(e).__name__}: {str(e)}")
-```
+### 迭代三检查项
 
-常见错误类型：
-- `GithubException` - GitHub API 限流或权限问题
-- `InvalidUrlException` - URL 格式不正确
-- `AuthenticationError` - OpenAI API Key 无效
-- `RateLimitError` - OpenAI API 限流
+- [ ] 代码分析功能
+- [ ] API 文档生成
+- [ ] 测试覆盖率分析
+- [ ] 性能建议
+
+### 迭代四检查项
+
+- [ ] 分享功能
+- [ ] 反馈系统
+
+### 迭代五检查项
+
+- [ ] 缓存优化
+- [ ] 异步处理
+- [ ] 多 LLM 支持
+
+### 迭代六检查项
+
+- [ ] 私有仓库支持
+- [ ] 自定义模板
+- [ ] 批量分析
+
+***
+
+*本实施计划将根据实际开发进度和用户反馈持续更新*
+
+*Last updated: 2026-03-18 18:30 PM*
