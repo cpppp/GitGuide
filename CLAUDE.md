@@ -12,6 +12,4 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Always update the memory-bank/@process.md after a step is completed or after adding a major feature or completing a milestone
 
-### Always update the memory-bank/docs/@CHANGELOG.md after each iteration is completed. The document follows the Keep a Changelog format. Entries are arranged in reverse chronological order by version number, with each version containing all the changes made in that release. At the end of each iteration, changes should be categorized by type (Added, Changed, Deprecated, Removed, Fixed, Security) and accompanied by the release date.
-
-
+### Always update the docs/@CHANGELOG.md after each iteration is completed. The document follows the Keep a Changelog format. Entries are arranged in reverse chronological order by version number, with each version containing all the changes made in that release. At the end of each iteration, changes should be categorized by type (Added, Changed, Deprecated, Removed, Fixed, Security) and accompanied by the release date.
