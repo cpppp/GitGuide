@@ -1,7 +1,14 @@
 """Orchestrator Agent - 工作流协调器"""
 from typing import Dict, Any, Callable, Optional
+import time
 from agents.analyzer import run_analyzer
 from agents.doc_generator import run_docgen, run_docgen_fast
+
+
+def check_cancelled() -> bool:
+    """检查是否已取消分析"""
+    import streamlit as st
+    return st.session_state.get("analysis_cancelled", False)
 
 
 def run(repo_url: str) -> Dict[str, Any]:
@@ -87,12 +94,26 @@ def run_with_progress(repo_url: str, progress_callback: Optional[Callable] = Non
 
         analysis_result = run_analyzer(repo_url)
 
+        # 检查是否取消
+        if check_cancelled():
+            result["success"] = False
+            result["cancelled"] = True
+            result["error"] = "用户取消了分析"
+            return result
+
         if not analysis_result.get("success"):
             result["success"] = False
             result["error"] = f"仓库分析失败: {analysis_result.get('error')}"
             return result
 
         result["analysis"] = analysis_result.get("analysis", "")
+
+        # 检查是否取消
+        if check_cancelled():
+            result["success"] = False
+            result["cancelled"] = True
+            result["error"] = "用户取消了分析"
+            return result
 
         # 更新进度：分析目录结构
         progress("analyzing_structure", 45, "正在分析目录结构...")
@@ -101,6 +122,13 @@ def run_with_progress(repo_url: str, progress_callback: Optional[Callable] = Non
         progress("generating_learning_doc", 65, "正在生成学习文档...")
 
         doc_result = run_docgen(repo_url, result["analysis"])
+
+        # 检查是否取消
+        if check_cancelled():
+            result["success"] = False
+            result["cancelled"] = True
+            result["error"] = "用户取消了分析"
+            return result
 
         if not doc_result.get("success"):
             result["success"] = False
@@ -174,11 +202,15 @@ def run_simple(repo_url: str) -> Dict[str, Any]:
         return result
 
 
-def run_fast(repo_url: str) -> Dict[str, Any]:
+def run_fast(repo_url: str, progress_callback: Optional[Callable] = None) -> Dict[str, Any]:
     """
     快速版本的 Orchestrator
     跳过 Analyzer，直接使用快速文档生成
     适用于需要快速获取结果的场景
+
+    参数:
+        repo_url: GitHub 仓库 URL
+        progress_callback: 进度回调函数，签名为 callback(stage_key, progress_value, message)
     """
     result = {
         "repo_url": repo_url,
@@ -187,12 +219,53 @@ def run_fast(repo_url: str) -> Dict[str, Any]:
         "setup_guide": None,
         "repo_info": None,
         "success": True,
-        "error": None
+        "error": None,
+        "cancelled": False
     }
 
+    def progress(stage_key, progress_value, message):
+        if progress_callback:
+            progress_callback(stage_key, progress_value, message)
+
     try:
+        # 步骤 1: 验证仓库
+        progress("validating", 10, "正在验证仓库...")
+        time.sleep(0.5)  # 让 UI 有时间刷新
+
+        if check_cancelled():
+            result["success"] = False
+            result["cancelled"] = True
+            result["error"] = "用户取消了分析"
+            return result
+
+        # 步骤 2: 获取仓库信息
+        progress("getting_repo_info", 25, "正在获取仓库信息...")
+        time.sleep(0.5)
+
+        if check_cancelled():
+            result["success"] = False
+            result["cancelled"] = True
+            result["error"] = "用户取消了分析"
+            return result
+
+        # 步骤 3: 快速生成文档
+        progress("generating_learning_doc", 50, "正在生成学习文档...")
+        time.sleep(0.5)
+
+        if check_cancelled():
+            result["success"] = False
+            result["cancelled"] = True
+            result["error"] = "用户取消了分析"
+            return result
+
         # 直接使用快速文档生成
         doc_result = run_docgen_fast(repo_url)
+
+        if check_cancelled():
+            result["success"] = False
+            result["cancelled"] = True
+            result["error"] = "用户取消了分析"
+            return result
 
         if not doc_result.get("success"):
             result["success"] = False
@@ -202,6 +275,23 @@ def run_fast(repo_url: str) -> Dict[str, Any]:
         result["learning_doc"] = doc_result.get("learning_doc", "")
         result["setup_guide"] = doc_result.get("setup_guide", "")
         result["repo_info"] = doc_result.get("repo_info", {})
+
+        # 步骤 4: 生成启动指南
+        progress("generating_setup_guide", 85, "正在生成启动指南...")
+        time.sleep(0.5)
+
+        if check_cancelled():
+            result["success"] = False
+            result["cancelled"] = True
+            result["error"] = "用户取消了分析"
+            return result
+
+        # 步骤 5: 整理结果
+        progress("finalizing", 95, "正在整理结果...")
+        time.sleep(0.5)
+
+        # 完成
+        progress("completed", 100, "分析完成！")
 
         return result
 

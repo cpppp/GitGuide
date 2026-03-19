@@ -116,8 +116,11 @@ if st.session_state.get("analysis_started") and st.session_state.get("repo_url_p
 
             # 根据模式选择分析函数
             if mode == "fast":
-                # 快速模式：直接生成文档
-                result = run_fast(pending_url)
+                # 快速模式：直接生成文档（带进度回调）
+                result = run_fast(
+                    pending_url,
+                    progress_callback=update_progress
+                )
             else:
                 # 详细模式：带进度回调的分析
                 result = run_with_progress(
