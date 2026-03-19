@@ -1,285 +1,285 @@
 # GitGuide 项目实施进度
 
-> **文档版本**：v4.0\
+> **文档版本**：v2.1\
 > **最后更新**：2026-03-19\
-> **当前阶段**：迭代一 - 用户体验优化（已完成）
+> **当前阶段**：架构重构 - Streamlit → Vue 3 + FastAPI（已完成）
 
 ***
 
 ## 项目状态总览
 
-| 阶段   | 状态     | 说明      |
-| :--- | :----- | :------ |
-| MVP  | ✅ 已完成  | 基础功能已实现 |
-| V1.1 | ✅ 已完成  | 用户体验优化  |
-| V1.2 | ⏳ 待开始  | 功能增强    |
-| V2.0 | ⏳ 待开始  | 分析能力提升  |
-| V2.1 | ⏳ 待开始  | 协作与分享   |
-| V2.2 | ⏳ 待开始  | 技术改进    |
+| 阶段   | 状态    | 说明          |
+| :--- | :---- | :---------- |
+| MVP  | ✅ 已完成 | 基础功能已实现     |
+| V1.1 | ✅ 已完成 | 用户体验优化      |
+| V2.0 | ✅ 已完成 | 架构重构（前后端分离） |
+| V2.1 | ⏳ 待开始 | 功能增强        |
+| V2.2 | ⏳ 待开始 | 分析能力提升      |
+| V2.3 | ⏳ 待开始 | 协作与分享       |
 
 ***
 
-## 迭代一：用户体验优化（v1.1）
+## V2.0：架构重构 - Streamlit → Vue 3 + FastAPI
 
 **优先级**：高\
-**预计工作量**：3 天\
-**开始时间**：2026-03-18\
+**开始时间**：2026-03-19\
 **完成时间**：2026-03-19\
-**目标**：提升用户等待体验，完善错误处理
+**目标**：前后端分离，支持 WebSocket 实时进度
 
 ***
 
-### 步骤 1.1：进度反馈与状态管理 ✅
+## V2.1 计划：功能增强
 
-**状态**：已完成
+**优先级**：高\
+**预计工作量**：5 天\
+**目标**：提供更多实用功能，增强用户体验
 
-**任务清单**：
+### 步骤 2.1：导出功能
 
-- [x] 在首页添加进度条组件
-- [x] 实现分阶段状态提示
-- [x] 添加预计剩余时间显示
-- [x] 实现取消分析任务功能
+**任务**：
+- [ ] 实现 Markdown 导出
+- [ ] 实现 PDF 导出
+- [ ] 实现 HTML 导出
+- [ ] 添加导出按钮到文档页面
 
-**进度阶段**：
+**实现方案**：
+```python
+# core/export.py
+from datetime import datetime
 
-1. 阶段 1：正在获取仓库信息... (20%)
-2. 阶段 2：正在分析目录结构... (40%)
-3. 阶段 3：正在生成学习文档... (60%)
-4. 阶段 4：正在生成启动指南... (80%)
-5. 阶段 5：完成！ (100%)
+def export_to_markdown(result):
+    """导出为 Markdown"""
+    content = f"""# {result.get('project_name', '项目分析报告')}
 
-**实现文件**：
+> 生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+> 仓库地址：{result.get('repo_url', '')}
 
-- `pages/1_🏠_Home.py` - 添加进度条和状态提示
+---
+
+## 📋 项目概述
+
+{result.get('overview', '暂无概述')}
+
+---
+
+## 🔧 技术栈
+
+{result.get('tech_stack', '暂无技术栈信息')}
+
+---
+
+## 📁 目录结构
+
+```
+{result.get('directory_structure', '暂无目录结构')}
+```
+
+---
+
+## 🚀 启动指南
+
+{result.get('setup_guide', '暂无启动指南')}
+
+---
+
+*本文档由 GitGuide 自动生成*
+"""
+    return content
+
+def export_to_html(result):
+    """导出为 HTML"""
+    md_content = export_to_markdown(result)
+    # 使用 markdown 库转换
+    import markdown
+    html_content = markdown.markdown(md_content)
+    
+    html_template = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{result.get('project_name', '项目分析报告')}</title>
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }}
+        pre {{ background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; }}
+        code {{ background: #f5f5f5; padding: 2px 6px; border-radius: 3px; }}
+    </style>
+</head>
+<body>
+    {html_content}
+</body>
+</html>"""
+    return html_template
+```
 
 **验证方法**：
-
-- [x] 输入测试仓库 URL，确认进度条正常显示
-- [x] 确认各阶段状态提示清晰
-- [x] 确认预计剩余时间显示正常
-- [x] 确认取消功能正常工作
-
-**实现细节**：
-- 使用基于已用时间估算总时间的方式计算剩余时间
-- 取消功能通过 session_state 标志位实现，检查分析过程中是否被取消
+- [ ] 点击导出 Markdown，确认文件下载正确
+- [ ] 点击导出 PDF，确认格式正确
+- [ ] 点击导出 HTML，确认可在浏览器打开
 
 ***
 
-### 步骤 1.2：错误处理与友好提示 ✅
+### 步骤 2.2：代码图谱可视化
 
-**状态**：已完成
+**任务**：
+- [ ] 实现目录树可视化
+- [ ] 实现模块依赖关系图
+- [ ] 添加文件大小分布图
+- [ ] 创建新的图谱标签页
 
-**任务清单**：
+**实现方案**：
+```python
+# core/visualization.py
+import plotly.express as px
+import plotly.graph_objects as go
 
-- [x] 实现 URL 格式实时验证
-- [x] 添加仓库不存在/私有仓库提示
-- [x] 实现 API 限流提示和重试建议
-- [x] 添加网络错误自动重试机制
-- [x] 实现错误日志记录
+def create_directory_tree(structure):
+    """创建目录树可视化"""
+    # 使用 plotly 创建树形图
+    labels = []
+    parents = []
+    
+    def traverse(node, parent=""):
+        for name, children in node.items():
+            labels.append(name)
+            parents.append(parent)
+            if children:
+                traverse(children, name)
+    
+    traverse(structure)
+    
+    fig = go.Figure(go.Treemap(
+        labels=labels,
+        parents=parents,
+        root_color="lightgrey"
+    ))
+    return fig
 
-**实现文件**：
-
-- `core/validators.py` - URL 验证和错误处理
-
-**错误类型处理**：
-
-| 错误类型     | 提示信息                 |
-| :------- | :------------------- |
-| URL 格式错误 | 请输入有效的 GitHub 仓库 URL |
-| 仓库不存在    | 仓库不存在或为私有仓库          |
-| API 限流   | GitHub API 请求次数已达上限  |
-| 网络错误     | 网络连接失败，请检查网络后重试      |
-| 请求超时     | 请求超时，仓库可能过大          |
+def create_dependency_graph(dependencies):
+    """创建依赖关系图"""
+    import networkx as nx
+    
+    G = nx.DiGraph()
+    for dep in dependencies:
+        G.add_edge(dep['from'], dep['to'])
+    
+    # 使用 plotly 绘制
+    pos = nx.spring_layout(G)
+    
+    edge_x = []
+    edge_y = []
+    for edge in G.edges():
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=edge_x, y=edge_y, mode='lines', line=dict(width=0.5, color='#888')))
+    
+    return fig
+```
 
 **验证方法**：
-
-- [x] 输入无效 URL，确认显示错误提示
-- [x] 输入私有仓库 URL，确认提示正确
+- [ ] 分析仓库后，确认图谱标签页显示
+- [ ] 确认目录树可视化正确
+- [ ] 确认依赖关系图可交互
 
 ***
 
-### 步骤 1.3：历史记录功能 ✅
+### 步骤 2.3：深色模式
 
-**状态**：已完成
+**任务**：
+- [ ] 实现深色/浅色主题切换
+- [ ] 添加主题切换按钮
+- [ ] 保存用户主题偏好
 
-**任务清单**：
+**实现方案**：
+```python
+# core/theme.py
+import streamlit as st
 
-- [x] 创建历史记录存储模块
-- [x] 实现历史记录列表展示
-- [x] 添加快速重新分析功能
-- [x] 实现清除历史记录选项
+def apply_theme():
+    """应用主题"""
+    theme = st.session_state.get("theme", "light")
+    
+    if theme == "dark":
+        st.markdown("""
+        <style>
+        .stApp {
+            background-color: #1E1E1E;
+            color: #FFFFFF;
+        }
+        .stTextInput > div > div > input {
+            background-color: #2D2D2D;
+            color: #FFFFFF;
+        }
+        .stButton > button {
+            background-color: #3D3D3D;
+            color: #FFFFFF;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
-**实现文件**：
+def toggle_theme():
+    """切换主题"""
+    current = st.session_state.get("theme", "light")
+    st.session_state["theme"] = "dark" if current == "light" else "light"
+```
 
-- `core/history.py` - 历史记录管理
-- `data/history.json` - 历史记录存储
+**验证方法**：
+- [ ] 点击主题切换按钮，确认界面颜色变化
+- [ ] 刷新页面，确认主题设置保持
 
-**数据结构**：
+***
 
-```json
-{
-  "url": "https://github.com/user/repo",
-  "name": "项目名称",
-  "description": "项目描述",
-  "language": "Python",
-  "timestamp": "2026-03-18T18:30:00"
+### 步骤 2.4：多语言支持
+
+**任务**：
+- [ ] 创建语言配置文件
+- [ ] 实现界面语言切换
+- [ ] 实现文档语言选择
+- [ ] 实现 AI 回答语言适配
+
+**实现方案**：
+```python
+# core/i18n.py
+
+LANGUAGES = {
+    "zh": {
+        "app_title": "🚀 GitGuide",
+        "app_subtitle": "快速上手任意 GitHub 仓库",
+        "input_label": "GitHub 仓库 URL",
+        "input_placeholder": "https://github.com/user/repo",
+        "generate_btn": "生成文档",
+        "learning_doc_tab": "学习文档",
+        "setup_guide_tab": "启动指南",
+        "chat_placeholder": "问关于这个项目的问题...",
+        "history_title": "历史记录",
+        "favorites_title": "收藏仓库"
+    },
+    "en": {
+        "app_title": "🚀 GitGuide",
+        "app_subtitle": "Quick Start for Any GitHub Repository",
+        "input_label": "GitHub Repository URL",
+        "input_placeholder": "https://github.com/user/repo",
+        "generate_btn": "Generate Docs",
+        "learning_doc_tab": "Learning Docs",
+        "setup_guide_tab": "Setup Guide",
+        "chat_placeholder": "Ask questions about this project...",
+        "history_title": "History",
+        "favorites_title": "Favorites"
+    }
 }
-```
 
-**功能说明**：
-
-- 保存最近 20 条分析记录
-- 支持点击历史记录快速重新分析
-- 支持一键清除所有历史记录
-
-**验证方法**：
-
-- [x] 分析多个仓库，确认历史记录正确保存
-- [x] 点击历史记录项，确认可快速重新分析
-- [x] 清除历史记录，确认数据被删除
-
-***
-
-### 步骤 1.4：收藏仓库功能 ✅
-
-**状态**：已完成
-
-**任务清单**：
-
-- [x] 创建收藏存储模块
-- [x] 在文档页面添加收藏按钮
-- [x] 创建收藏列表页面（在首页展示）
-- [x] 实现收藏数据持久化
-
-**实现文件**：
-
-- `core/favorites.py` - 收藏管理
-- `data/favorites.json` - 收藏数据存储
-
-**功能说明**：
-
-- 在文档页面添加收藏/取消收藏按钮
-- 收藏状态持久化保存
-- 首页显示收藏仓库列表
-- 支持快速查看已收藏仓库的文档
-
-**验证方法**：
-
-- [x] 点击收藏按钮，确认收藏成功
-- [x] 刷新页面，确认收藏状态保持
-- [x] 在收藏列表查看已收藏仓库
-
-***
-
-## 迭代一检查清单
-
-### 功能检查
-
-- [x] 进度条正常显示
-- [x] 状态提示清晰
-- [x] 错误处理友好
-- [x] 历史记录功能正常
-- [x] 收藏功能正常
-
-### 文件检查
-
-- [x] `core/validators.py` 已创建
-- [x] `core/history.py` 已创建
-- [x] `core/favorites.py` 已创建
-- [x] `pages/1_🏠_Home.py` 已更新
-- [x] `pages/2_📚_Documentation.py` 已更新
-
-### 测试检查
-
-- [x] 进度反馈测试通过
-- [x] 预计剩余时间测试通过
-- [x] 取消分析功能测试通过
-- [x] 错误处理测试通过
-- [x] 历史记录测试通过
-- [x] 收藏功能测试通过
-
-***
-
-### 步骤 1.5：修复文档显示问题 ✅
-
-**状态**：已完成
-
-**任务清单**：
-
-- [x] 修复学习文档中仓库地址显示问题（Unknown -> 正确显示仓库名和链接）
-- [x] 精简启动指南文档内容（移除常见问题等额外内容）
-
-**实现文件**：
-
-- `pages/2_📚_Documentation.py` - 修复仓库地址显示
-- `agents/doc_generator.py` - 精简启动指南提示词
-
-**验证方法**：
-
-- [x] 生成文档后确认仓库名正确显示且可点击
-
-***
-
-### 步骤 1.6：引入 Redis + RQ 异步后台任务 ⏳
-
-**状态**：进行中
-
-**任务清单**：
-
-- [x] 添加 Redis + RQ 依赖到 requirements.txt
-- [x] 创建 backend/tasks.py 任务队列管理模块
-- [x] 创建 backend/worker.py 后台任务执行器
-- [ ] 前端集成异步任务调用（待实现）
-- [ ] 配置 Redis 服务（待配置）
-
-**实现文件**：
-
-- `requirements.txt` - 添加 redis>=5.0.0, rq>=1.16.0
-- `backend/tasks.py` - 任务队列管理
-- `backend/worker.py` - 后台任务执行
-
-**架构说明**：
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Streamlit 前端  │ ──▶ │  Redis 队列     │ ──▶ │  RQ Worker      │
-│  (用户界面)      │     │  (任务存储)      │     │  (后台处理)      │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-        │                       │                       │
-        │  提交任务              │  获取状态              │  更新进度
-        └──────────────────────▶│◀──────────────────────┘
-```
-
-**启动方式**：
-
-```bash
-# 1. 启动 Redis
-redis-server
-
-# 2. 启动 RQ Worker
-rq worker gitguide
-
-# 3. 启动 Streamlit
-streamlit run app.py
+def get_text(key, lang="zh"):
+    """获取多语言文本"""
+    return LANGUAGES.get(lang, LANGUAGES["zh"]).get(key, key)
 ```
 
 **验证方法**：
-
-- [ ] 确认 Redis 连接正常
-- [ ] 确认任务可提交到队列
-- [ ] 确认进度可实时更新
-- [ ] 确认取消功能正常工作
-
-***
-
-## 迭代二计划（V1.2）
-
-待实现功能：
-
-- 导出功能（Markdown、PDF、HTML）
-- 代码图谱可视化
-- 深色模式
-- 多语言支持
+- [ ] 切换语言，确认界面文本变化
+- [ ] 确认文档生成语言正确
+- [ ] 确认 AI 回答语言适配
 
 ***
 
@@ -294,4 +294,4 @@ streamlit run app.py
 
 *本进度文档将根据实际开发进度持续更新*
 
-*Last updated: 2026-03-19 00:30 AM*
+*Last updated: 2026-03-19*

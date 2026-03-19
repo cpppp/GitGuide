@@ -4,11 +4,27 @@ import time
 from agents.analyzer import run_analyzer
 from agents.doc_generator import run_docgen, run_docgen_fast
 
+# 取消检查回调（可自定义）
+_cancelled_checker: Optional[Callable[[], bool]] = None
+
+
+def set_cancelled_checker(checker: Callable[[], bool]):
+    """设置取消检查回调"""
+    global _cancelled_checker
+    _cancelled_checker = checker
+
 
 def check_cancelled() -> bool:
     """检查是否已取消分析"""
-    import streamlit as st
-    return st.session_state.get("analysis_cancelled", False)
+    if _cancelled_checker:
+        return _cancelled_checker()
+
+    # 默认：尝试从 Streamlit 获取
+    try:
+        import streamlit as st
+        return st.session_state.get("analysis_cancelled", False)
+    except:
+        return False
 
 
 def run(repo_url: str) -> Dict[str, Any]:
@@ -223,9 +239,16 @@ def run_fast(repo_url: str, progress_callback: Optional[Callable] = None) -> Dic
         "cancelled": False
     }
 
-    def progress(stage_key, progress_value, message):
+    def progress(stage_key: str, progress_value: int, message: str):
+        """进度回调，确保每次调用都会触发回调"""
         if progress_callback:
-            progress_callback(stage_key, progress_value, message)
+            try:
+                # 尝试调用回调函数
+                progress_callback(stage_key, progress_value, message)
+            except Exception as e:
+                print(f"Progress callback error: {e}")
+        # 即使没有回调也打印进度，便于调试
+        print(f"[{stage_key}] {progress_value}% - {message}")
 
     try:
         # 步骤 1: 验证仓库

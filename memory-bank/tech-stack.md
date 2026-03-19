@@ -6,40 +6,58 @@
 
 | 层级           | 技术选择                      | 版本建议                           |
 | :----------- | :------------------------ | :----------------------------- |
-| **前端框架**     | Streamlit                 | 1.40+                          |
+| **前端框架**     | Vue 3 + Element Plus      | Vue 3.4+, Element Plus 2.5+    |
+| **前端构建**     | Vite                      | 5.0+                           |
+| **前端状态管理**  | Pinia                     | 2.1+                           |
 | **Agent 框架** | LangChain + LangGraph     | LangChain 1.0+, LangGraph 0.2+ |
-| **后端框架**     | Python (集成于 Streamlit)    | Python 3.11+                   |
+| **后端框架**     | FastAPI                   | 0.109+                          |
 | **AI 服务**    | OpenAI API                | glm-4.7                        |
 | **仓库分析**     | GitPython + GitHub API    | GitPython 3.1+                 |
-| **缓存方案**     | Redis + RQ                 | Redis 7.0+, RQ 1.16+            |
-| **部署平台**     | Streamlit Cloud / Railway | -                              |
+| **实时通信**     | WebSocket                 | FastAPI 内置                    |
+| **部署平台**     | Railway / 容器化部署      | -                              |
 
 ## 2. 详细技术选型理由
 
 ### 2.1 前端技术栈
 
-#### Streamlit
+#### Vue 3 + Element Plus
 
 **推荐理由：**
 
-- **极速开发**：纯 Python 编写前端，无需学习 HTML/CSS/JavaScript
-- **AI 应用友好**：专为数据科学和 AI 应用设计，内置聊天组件
-- **MVP 理想选择**：从想法到原型只需几小时，大幅缩短开发周期
-- **内置组件丰富**：st.chat\_input、st.chat\_message 等组件完美适配 AI 问答场景
-- **热重载**：代码修改后自动刷新，开发体验流畅
+- **Composition API**：Vue 3 的组合式 API 使代码组织更灵活
+- **Element Plus**：国内生态最完善的 UI 组件库，文档友好
+- **Vite**：极快的开发启动和热更新体验
+- **Pinia**：轻量级状态管理，与 Vue 3 完美集成
+- **前后端分离**：更灵活的架构，支持更好的并发处理
 
-**替代方案对比：**
+**技术架构：**
 
-| 方案           | 优势                  | 劣势                | 推荐度         |
-| :----------- | :------------------ | :---------------- | :---------- |
-| Streamlit    | 纯 Python，开发最快，AI 友好 | 定制性较低             | ⭐⭐⭐⭐⭐ (MVP) |
-| React + Vite | 生态成熟，定制性强           | 需要前后端分离，开发周期长     | ⭐⭐⭐⭐ (正式版)  |
-| Gradio       | ML 演示友好             | 布局灵活性不如 Streamlit | ⭐⭐⭐         |
-
-**MVP → 正式版迁移路径：**
-
-- MVP 阶段使用 Streamlit 快速验证核心功能
-- 产品成熟后可迁移至 React + FastAPI 架构，提升用户体验和定制性
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Vue 3 前端                              │
+├─────────────────────────────────────────────────────────────┤
+│  Views: Home | Documentation | Chat                         │
+│  Components: UrlInput, ProgressPanel, DocViewer, ChatPanel │
+│  Store: Pinia (analysis, chat history)                     │
+│  API: Axios + WebSocket                                     │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ HTTP / WebSocket
+┌─────────────────────────────────────────────────────────────┐
+│                     FastAPI 后端                             │
+├─────────────────────────────────────────────────────────────┤
+│  API Routes: /api/analyze, /api/chat, /api/history          │
+│  WebSocket: /ws/analyze/{job_id}                            │
+│  Models: Pydantic schemas                                   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    LangChain Agents                         │
+├─────────────────────────────────────────────────────────────┤
+│  Orchestrator | Analyzer | DocGen | Chat                   │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ### 2.2 Agent 框架
 
