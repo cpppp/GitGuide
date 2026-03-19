@@ -1,8 +1,8 @@
 # GitGuide 项目实施计划
 
-> **文档版本**：v2.0\
-> **最后更新**：2026-03-18\
-> **更新说明**：基于 MVP 成功实现，重新规划后续迭代实施计划
+> **文档版本**：v2.1\
+> **最后更新**：2026-03-19\
+> **更新说明**：基于产品设计文档v2.1，将LangGraph架构升级作为迭代二
 
 ***
 
@@ -257,13 +257,381 @@ def is_favorited(repo_url):
 
 ***
 
-## 迭代二：功能增强（v1.2）
+## 迭代二：LangGraph 架构升级（v1.2）
 
 **优先级**：高\
-**预计工作量**：5 天\
-**目标**：增加导出功能、可视化、主题切换
+**预计工作量**：7 天\
+**目标**：将线性Agent调用转换为基于LangGraph的有向图结构，提升系统性能和可维护性
 
-### 步骤 2.1：导出功能
+### 步骤 2.1：LangGraph 工作流重构
+
+**任务**：
+1. 定义状态结构
+2. 创建有向图工作流
+3. 实现节点函数
+4. 配置边和条件路由
+5. 集成到现有系统
+
+**实现方案**：
+```python
+# agents/workflow.py
+from langgraph.graph import StateGraph, END
+from typing import TypedDict
+
+# 定义状态结构
+class GitGuideState(TypedDict):
+    repo_url: str
+    analysis: str
+    learning_doc: str
+    setup_guide: str
+    repo_info: dict
+    error: str
+    current_step: str
+
+# 创建图
+workflow = StateGraph(GitGuideState)
+
+# 添加节点
+def analyze_node(state):
+    """分析仓库节点"""
+    repo_info = get_repo_info(state["repo_url"])
+    structure = analyze_structure(state["repo_url"])
+    analysis = generate_analysis(repo_info, structure)
+    return {
+        **state,
+        "repo_info": repo_info,
+        "analysis": analysis,
+        "current_step": "analyzed"
+    }
+
+def generate_docs_node(state):
+    """生成文档节点"""
+    learning_doc = generate_learning_doc(state["repo_info"], state["analysis"])
+    setup_guide = generate_setup_guide(state["repo_info"], state["analysis"])
+    return {
+        **state,
+        "learning_doc": learning_doc,
+        "setup_guide": setup_guide,
+        "current_step": "docs_generated"
+    }
+
+def error_handler_node(state):
+    """错误处理节点"""
+    error_msg = state.get("error", "未知错误")
+    return {
+        **state,
+        "error": error_msg,
+        "current_step": "error"
+    }
+
+# 添加节点到图
+workflow.add_node("analyze", analyze_node)
+workflow.add_node("generate_docs", generate_docs_node)
+workflow.add_node("error_handler", error_handler_node)
+
+# 添加边
+workflow.add_edge("analyze", "generate_docs")
+workflow.add_conditional_edges(
+    "generate_docs",
+    lambda state: "error_handler" if state.get("error") else END,
+    {
+        "error_handler": "error_handler",
+        "success": END
+    }
+)
+
+# 设置入口点
+workflow.set_entry_point("analyze")
+
+# 编译图
+app = workflow.compile()
+```
+
+**验证方法**：
+- 确认状态结构正确定义
+- 确认节点函数正常执行
+- 确认边和条件路由正确配置
+
+### 步骤 2.2：并行处理优化
+
+**任务**：
+1. 实现并行分析仓库结构和获取仓库信息
+2. 并行生成学习文档和启动指南
+3. 优化任务调度和资源分配
+
+**实现方案**：
+```python
+# agents/parallel_workflow.py
+from langgraph.graph import StateGraph
+from typing import Annotated
+from operator import add
+
+# 定义支持并行执行的状态
+class ParallelState(TypedDict):
+    repo_url: str
+    repo_info: dict = None
+    structure: dict = None
+    learning_doc: str = ""
+    setup_guide: str = ""
+    errors: Annotated[list, add] = []
+
+# 并行分析节点
+def parallel_analyze(state):
+    """并行分析仓库"""
+    import concurrent.futures
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        # 并行执行两个任务
+        future_repo = executor.submit(get_repo_info, state["repo_url"])
+        future_structure = executor.submit(analyze_structure, state["repo_url"])
+        
+        # 等待结果
+        repo_info = future_repo.result()
+        structure = future_structure.result()
+    
+    return {
+        **state,
+        "repo_info": repo_info,
+        "structure": structure
+    }
+
+# 并行文档生成节点
+def parallel_generate_docs(state):
+    """并行生成文档"""
+    import concurrent.futures
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        # 并行生成两个文档
+        future_learning = executor.submit(generate_learning_doc, state["repo_info"], state["structure"])
+        future_setup = executor.submit(generate_setup_guide, state["repo_info"], state["structure"])
+        
+        # 等待结果
+        learning_doc = future_learning.result()
+        setup_guide = future_setup.result()
+    
+    return {
+        **state,
+        "learning_doc": learning_doc,
+        "setup_guide": setup_guide
+    }
+```
+
+**验证方法**：
+- 确认并行任务正常执行
+- 确认性能提升明显
+- 确认资源使用合理
+
+### 步骤 2.3：错误处理增强
+
+**任务**：
+1. 实现错误路由机制
+2. 添加错误恢复功能
+3. 实现详细错误记录
+4. 提供用户友好的错误提示
+
+**实现方案**：
+```python
+# agents/error_handling.py
+from typing import Literal
+
+def should_retry(state) -> Literal["retry", "abort"]:
+    """决定是否重试"""
+    error_count = state.get("error_count", 0)
+    if error_count < 3:
+        return "retry"
+    return "abort"
+
+def error_recovery_node(state):
+    """错误恢复节点"""
+    error_type = classify_error(state.get("error", ""))
+    
+    recovery_actions = {
+        "network": "检查网络连接后重试",
+        "api_limit": "等待一段时间后重试或使用Token",
+        "not_found": "确认仓库URL是否正确",
+        "timeout": "尝试分析较小的仓库"
+    }
+    
+    recovery_message = recovery_actions.get(error_type, "未知错误，请稍后重试")
+    
+    return {
+        **state,
+        "recovery_message": recovery_message,
+        "error_count": state.get("error_count", 0) + 1
+    }
+```
+
+**验证方法**：
+- 模拟各种错误场景，确认错误处理正确
+- 确认错误恢复机制有效
+- 确认错误日志记录完整
+
+### 步骤 2.4：可观测性提升
+
+**任务**：
+1. 添加详细执行日志
+2. 实现性能监控
+3. 添加调试工具
+4. 提供执行追踪功能
+
+**实现方案**：
+```python
+# core/monitoring.py
+import logging
+from datetime import datetime
+
+class WorkflowMonitor:
+    def __init__(self):
+        self.logger = logging.getLogger("workflow")
+        self.metrics = {
+            "start_time": None,
+            "node_times": {},
+            "total_time": None
+        }
+    
+    def log_node_start(self, node_name: str):
+        """记录节点开始执行"""
+        self.metrics["node_times"][node_name] = {
+            "start": datetime.now(),
+            "end": None,
+            "duration": None
+        }
+        self.logger.info(f"节点 {node_name} 开始执行")
+    
+    def log_node_end(self, node_name: str):
+        """记录节点结束执行"""
+        if node_name in self.metrics["node_times"]:
+            end_time = datetime.now()
+            start_time = self.metrics["node_times"][node_name]["start"]
+            duration = (end_time - start_time).total_seconds()
+            
+            self.metrics["node_times"][node_name].update({
+                "end": end_time,
+                "duration": duration
+            })
+            self.logger.info(f"节点 {node_name} 执行完成，耗时 {duration:.2f}秒")
+    
+    def get_performance_report(self) -> str:
+        """生成性能报告"""
+        report = []
+        for node, times in self.metrics["node_times"].items():
+            if times["duration"]:
+                report.append(f"{node}: {times['duration']:.2f}秒")
+        
+        return "\n".join(report)
+```
+
+**验证方法**：
+- 确认日志记录详细
+- 确认性能数据准确
+- 确认调试工具可用
+
+### 步骤 2.5：扩展性改进
+
+**任务**：
+1. 模块化节点设计
+2. 实现插件系统
+3. 添加新功能扩展点
+4. 优化代码结构
+
+**实现方案**：
+```python
+# agents/plugin_system.py
+from abc import ABC, abstractmethod
+from typing import Dict, Any
+
+class WorkflowPlugin(ABC):
+    """工作流插件基类"""
+    
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """插件名称"""
+        pass
+    
+    @property
+    @abstractmethod
+    def version(self) -> str:
+        """插件版本"""
+        pass
+    
+    @abstractmethod
+    def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """执行插件逻辑"""
+        pass
+
+class PluginManager:
+    """插件管理器"""
+    
+    def __init__(self):
+        self.plugins: Dict[str, WorkflowPlugin] = {}
+    
+    def register_plugin(self, plugin: WorkflowPlugin):
+        """注册插件"""
+        self.plugins[plugin.name] = plugin
+        print(f"插件 {plugin.name} v{plugin.version} 已注册")
+    
+    def execute_plugin(self, plugin_name: str, state: Dict[str, Any]) -> Dict[str, Any]:
+        """执行指定插件"""
+        if plugin_name in self.plugins:
+            return self.plugins[plugin_name].execute(state)
+        else:
+            raise ValueError(f"插件 {plugin_name} 未找到")
+```
+
+**验证方法**：
+- 确认插件系统正常工作
+- 确认新插件可动态加载
+- 确认模块化设计清晰
+
+### 步骤 2.6：前端集成
+
+**任务**：
+1. 更新前端调用方式
+2. 适配新的状态管理
+3. 更新进度显示逻辑
+4. 测试完整流程
+
+**实现方案**：
+```python
+# pages/1_🏠_Home.py (更新)
+from agents.workflow import app as workflow_app
+
+def analyze_with_langgraph(repo_url: str):
+    """使用LangGraph工作流分析仓库"""
+    # 初始化状态
+    initial_state = {
+        "repo_url": repo_url,
+        "analysis": "",
+        "learning_doc": "",
+        "setup_guide": "",
+        "repo_info": {},
+        "error": "",
+        "current_step": "start"
+    }
+    
+    # 执行工作流
+    result = workflow_app.invoke(initial_state)
+    
+    return {
+        "success": not bool(result.get("error")),
+        "repo_url": repo_url,
+        "analysis": result.get("analysis", ""),
+        "learning_doc": result.get("learning_doc", ""),
+        "setup_guide": result.get("setup_guide", ""),
+        "repo_info": result.get("repo_info", {}),
+        "error": result.get("error")
+    }
+```
+
+**验证方法**：
+- 确认前端与LangGraph工作流正常集成
+- 确认状态传递正确
+- 确认进度显示准确
+
+***
+
+## 迭代三：功能增强（v1.3）
 
 **任务**：
 
@@ -797,12 +1165,12 @@ class APIExtractor:
 - [ ] 收藏功能正常
 
 ### 迭代二检查项
-
-- [ ] Markdown 导出正常
-- [ ] PDF 导出正常
-- [ ] 代码图谱可视化
-- [ ] 深色模式切换
-- [ ] 多语言支持
+- [ ] LangGraph 工作流正常工作
+- [ ] 状态管理正确实现
+- [ ] 并行处理性能提升
+- [ ] 错误处理增强有效
+- [ ] 可观测性日志完整
+- [ ] 扩展性插件系统正常
 
 ### 迭代三检查项
 
@@ -822,13 +1190,6 @@ class APIExtractor:
 - [ ] 异步处理
 - [ ] 多 LLM 支持
 
-### 迭代六检查项
-
-- [ ] 私有仓库支持
-- [ ] 自定义模板
-- [ ] 批量分析
-
-***
 
 *本实施计划将根据实际开发进度和用户反馈持续更新*
 
