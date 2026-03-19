@@ -1,0 +1,18 @@
+[
+  {
+    "url": "https://github.com/666ghj/DeepSearchAgent-Demo",
+    "name": "DeepSearchAgent-Demo",
+    "description": "从0实现一个简洁清晰的Deep Search Agent",
+    "language": "Python",
+    "stargazers_count": 1113,
+    "added_at": "2026-03-19T10:01:40.339531"
+  },
+  {
+    "url": "https://github.com/cpppp/GitGuide",
+    "name": "GitGuide",
+    "description": "**GitGuide** 是一个帮助开发者快速上手任意 GitHub 仓库的智能化工具。用户只需输入 GitHub 仓库 URL，系统即可自动分析仓库内容，生成一份定制的学习文档 + 启动指南，并结合 AI 能力提供交互式答疑，让用户可以边学边问，快速理解项目结构并成功在本地运行。",
+    "language": "Python",
+    "stargazers_count": 0,
+    "added_at": "2026-03-19T14:00:59.511723"
+  }
+]

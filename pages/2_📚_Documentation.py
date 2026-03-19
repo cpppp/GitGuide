@@ -13,8 +13,32 @@ analysis_result = st.session_state.get("analysis_result")
 if analysis_result:
     # 显示仓库信息
     repo_info = analysis_result.get("repo_info", {})
-    if repo_info:
-        st.markdown(f"**仓库**: [{repo_info.get('full_name', 'Unknown')}]({repo_info.get('html_url', '#')})")
+    repo_url = st.session_state.get("repo_url", "")
+
+    # 收藏功能
+    from core.favorites import is_favorite, add_favorite, remove_favorite
+
+    if repo_url:
+        is_fav = is_favorite(repo_url)
+
+        # 解析 repo_url 获取名称
+        repo_name = repo_info.get("full_name") or repo_info.get("name") or repo_url.replace("https://github.com/", "")
+        repo_html_url = repo_info.get("html_url") or repo_url
+
+        # 标题行
+        col_title, col_fav = st.columns([5, 1])
+        with col_title:
+            st.markdown(f"**仓库**: [{repo_name}]({repo_html_url})")
+        with col_fav:
+            if is_fav:
+                if st.button("⭐ 已收藏", key="unfavorite_btn"):
+                    remove_favorite(repo_url)
+                    st.rerun()
+            else:
+                if st.button("☆ 收藏", key="favorite_btn"):
+                    add_favorite(repo_url, repo_info)
+                    st.rerun()
+
         if repo_info.get("description"):
             st.markdown(f"**描述**: {repo_info.get('description')}")
         if repo_info.get("language"):

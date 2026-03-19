@@ -1,6 +1,7 @@
 """DocGen Agent - 文档生成专家"""
 from langchain.agents import create_agent
 from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage
 from core.config import get_llm
 from tools.github_tools import get_repo_info as github_get_repo_info
 
@@ -14,57 +15,42 @@ def get_repo_info_docgen(repo_url: str) -> str:
 
 docgen_tools = [get_repo_info_docgen]
 
-# DocGen Agent 的系统提示
+# DocGen Agent 的系统提示（简化版）
 DOCGEN_SYSTEM_PROMPT = """你是一个文档生成专家，专门帮助用户生成学习文档和启动指南。
 
-你的职责：
-1. 根据仓库分析结果生成学习文档
-2. 生成详细的启动指南，包括环境准备、安装步骤、运行命令
-3. 提取项目的关键信息并组织成易读的格式
+请根据提供的仓库信息，生成简洁的学习文档和启动指南。
 
-输入信息包括：
-- 仓库基本信息（名称、描述、语言、star 数）
-- README 内容（如果有）
-- 目录结构分析
-- 项目类型和依赖
+重要提示：
+1. 启动指南只需要包含：环境要求、安装步骤、运行命令
+2. 学习文档包含：项目概述、技术栈、目录结构、核心模块
 
-输出格式要求：
-请生成以下内容：
+请直接生成内容，不要询问问题。格式如下：
 
-## 学习文档 (learning_doc)
+## 学习文档
 ### 项目概述
-[项目名称] 是一个 [项目描述]
+[项目描述]
 
 ### 技术栈
 - 主要语言：[语言]
-- 依赖管理：[包管理器]
-- 其他技术：[其他相关技术]
+- 其他技术：[技术]
 
 ### 目录结构
-[简要说明目录结构]
+[简要目录结构]
 
 ### 核心模块
-[列出主要模块及其作用]
+[主要模块]
 
-## 启动指南 (setup_guide)
+## 启动指南
 ### 环境要求
-- [环境要求 1]
-- [环境要求 2]
+- [要求]
 
 ### 安装步骤
-1. [步骤 1]
-2. [步骤 2]
-3. [步骤 3]
+1. [步骤]
 
-### 运行命令
+### 运行项目
 ```bash
-[运行命令]
+[命令]
 ```
-
-### 常见问题
-[列出可能的常见问题及解决方案]
-
-请确保内容准确、实用，适合初学者阅读。
 """
 
 
@@ -84,6 +70,93 @@ def create_docgen_agent():
 
 # 全局 Agent 实例
 docgen_agent = create_docgen_agent()
+
+
+def run_docgen_fast(repo_url: str, repo_info: dict = None) -> dict:
+    """
+    快速版本的文档生成 - 直接使用 LLM，不通过 Agent
+    这种方式更快，适合简单场景
+    """
+    llm = get_llm()
+
+    # 获取仓库信息
+    if repo_info is None:
+        repo_info_str = github_get_repo_info.invoke({"repo_url": repo_url})
+        import ast
+        try:
+            repo_info = ast.literal_eval(repo_info_str) if isinstance(repo_info_str, str) else repo_info_str
+        except:
+            repo_info = {}
+
+    readme = repo_info.get("readme", "")[:2000] if repo_info else ""  # 限制 README 长度
+
+    prompt = f"""请根据以下仓库信息生成学习文档和启动指南：
+
+仓库名称: {repo_url.split('/')[-1]}
+描述: {repo_info.get('description', '无')}
+语言: {repo_info.get('language', '未知')}
+Stars: {repo_info.get('stargazers_count', 0)}
+
+README:
+{readme}
+
+请按以下格式生成：
+
+## 学习文档
+### 项目概述
+[简短描述项目]
+
+### 技术栈
+- 主要语言: {repo_info.get('language', '未知')}
+
+### 目录结构
+[简要说明]
+
+### 核心模块
+[主要模块]
+
+## 启动指南
+### 环境要求
+- [环境要求]
+
+### 安装步骤
+1. [安装步骤]
+
+### 运行项目
+```bash
+[运行命令]
+```
+"""
+
+    try:
+        # 直接调用 LLM
+        response = llm.invoke([HumanMessage(content=prompt)])
+        output = response.content if hasattr(response, 'content') else str(response)
+
+        # 解析输出
+        learning_doc = output
+        setup_guide = output
+
+        if "## 启动指南" in output:
+            parts = output.split("## 启动指南")
+            if len(parts) >= 2:
+                learning_doc = parts[0].strip()
+                if parts[1]:
+                    setup_guide = "## 启动指南\n" + parts[1].strip()
+
+        return {
+            "success": True,
+            "learning_doc": learning_doc,
+            "setup_guide": setup_guide,
+            "repo_info": repo_info,
+            "repo_url": repo_url
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "repo_url": repo_url
+        }
 
 
 def run_docgen(repo_url: str, analysis_result: str = None) -> dict:
