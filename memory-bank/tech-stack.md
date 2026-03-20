@@ -4,17 +4,20 @@
 
 基于产品设计文档的需求分析，推荐以下技术栈组合：
 
-| 层级           | 技术选择                      | 版本建议                           |
-| :----------- | :------------------------ | :----------------------------- |
-| **前端框架**     | Vue 3 + Element Plus      | Vue 3.4+, Element Plus 2.5+    |
-| **前端构建**     | Vite                      | 5.0+                           |
-| **前端状态管理**  | Pinia                     | 2.1+                           |
-| **Agent 框架** | LangChain + LangGraph     | LangChain 1.0+, LangGraph 0.2+ |
-| **后端框架**     | FastAPI                   | 0.109+                          |
-| **AI 服务**    | OpenAI API                | glm-4.7                        |
-| **仓库分析**     | GitPython + GitHub API    | GitPython 3.1+                 |
-| **实时通信**     | WebSocket                 | FastAPI 内置                    |
-| **部署平台**     | Railway / 容器化部署      | -                              |
+| 层级           | 技术选择                   | 版本建议                           |
+| :----------- | :--------------------- | :----------------------------- |
+| **前端框架**     | Vue 3 + Element Plus   | Vue 3.4+, Element Plus 2.5+    |
+| **前端构建**     | Vite                   | 5.0+                           |
+| **前端状态管理**   | Pinia                  | 2.1+                           |
+| **Agent 框架** | LangChain + LangGraph  | LangChain 1.0+, LangGraph 0.2+ |
+| **后端框架**     | FastAPI                | 0.109+                         |
+| **AI 服务**    | OpenAI API / 智谱 GLM    | GPT-4 / glm-4.7                |
+| **仓库分析**     | GitPython + GitHub API | GitPython 3.1+                 |
+| **实时通信**     | WebSocket              | FastAPI 内置                     |
+| **数据库**      | SQLite / PostgreSQL    | SQLite 3.x / PostgreSQL 14+    |
+| **ORM**      | SQLAlchemy             | 2.0+                           |
+| **缓存**       | Redis                  | 7.0+                           |
+| **部署平台**     | Railway / 容器化部署        | -                              |
 
 ## 2. 详细技术选型理由
 
@@ -49,13 +52,14 @@
 │  API Routes: /api/analyze, /api/chat, /api/history          │
 │  WebSocket: /ws/analyze/{job_id}                            │
 │  Models: Pydantic schemas                                   │
+│  Database: SQLAlchemy ORM                                   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    LangChain Agents                         │
 ├─────────────────────────────────────────────────────────────┤
-│  Orchestrator | Analyzer | DocGen | Chat                   │
+│  Supervisor | Analyzer Team | Generator Team | Chat        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -71,7 +75,9 @@
 - **可观测性**：LangSmith 集成，便于调试和监控 Agent 行为
 - **生态丰富**：大量预置组件（文档加载器、向量存储、LLM 接口）
 
-**多 Agent 架构设计：**
+#### Multi-Agent 架构升级（v3.1）
+
+借鉴 OpenMAIC 的设计理念，升级为分层多Agent架构：
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -79,43 +85,52 @@
 └─────────────────────────┬───────────────────────────────────┘
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Orchestrator Agent                        │
-│              (任务分发、结果整合、进度汇报)                      │
+│                    Supervisor Agent                          │
+│              (任务规划、进度协调、质量控制)                      │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
+│  │ Planner  │ │Scheduler │ │ Reviewer │ │Optimizer │       │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
 └──────────┬──────────────────┬──────────────────┬────────────┘
            │                  │                  │
            ▼                  ▼                  ▼
 ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
-│  Analyzer Agent  │ │  DocGen Agent    │ │  Chat Agent      │
-│  (仓库分析专家)    │ │  (文档生成专家)    │ │  (问答专家)       │
-│                  │ │                  │ │                  │
-│ - 识别项目类型    │ │ - 生成学习文档    │ │ - 回答用户问题    │
-│ - 解析依赖关系    │ │ - 生成启动指南    │ │ - 解释代码逻辑    │
-│ - 分析目录结构    │ │ - 提取关键信息    │ │ - 提供建议        │
+│  Analyzer Team   │ │  Generator Team  │ │  Research Team   │
+│  (分析团队-并行)   │ │  (生成团队-并行)   │ │  (调研团队-并行)   │
+├──────────────────┤ ├──────────────────┤ ├──────────────────┤
+│ TypeAnalyzer     │ │ ReadmeGenerator  │ │ CodeAnalyzer     │
+│ StructureAnalyzer│ │ LearningDocGen   │ │ APIAnalyzer      │
+│ DependencyAnalyzer│ │ SetupGuideGen   │ │ TestAnalyzer     │
+│ CodePatternAnalyst│ │ VisualDocGen   │ │ PerfAnalyzer     │
 └──────────────────┘ └──────────────────┘ └──────────────────┘
            │                  │                  │
            └──────────────────┼──────────────────┘
                               ▼
                     ┌──────────────────┐
-                    │   Shared Tools   │
-                    │ - GitHub API     │
-                    │ - GitPython      │
-                    │ - File Reader    │
-                    │ - Code Parser    │
+                    │   Shared Context │
+                    │   (共享上下文)    │
                     └──────────────────┘
 ```
 
 **Agent 职责划分：**
 
-| Agent              | 职责               | 输入         | 输出          |
-| :----------------- | :--------------- | :--------- | :---------- |
-| **Orchestrator**   | 协调各 Agent，管理整体流程 | 用户 URL     | 最终结果        |
-| **Analyzer Agent** | 分析仓库结构、识别技术栈     | 仓库 URL     | 项目元数据       |
-| **DocGen Agent**   | 生成学习文档和启动指南      | 分析结果       | Markdown 文档 |
-| **Chat Agent**     | 回答用户问题           | 用户问题 + 上下文 | 回答内容        |
+| Agent                    | 职责               | 输入     | 输出       | 执行方式 |
+| :----------------------- | :--------------- | :----- | :------- | :--- |
+| **Supervisor**           | 协调各 Agent，管理整体流程 | 用户 URL | 最终结果     | 串行   |
+| **Planner**              | 制定分析策略，分配任务      | 仓库信息   | 分析计划     | 串行   |
+| **Scheduler**            | 调度并行任务           | 分析计划   | 任务队列     | 串行   |
+| **TypeAnalyzer**         | 识别项目类型、语言        | 仓库 URL | 项目类型     | 并行   |
+| **StructureAnalyzer**    | 分析目录结构           | 仓库 URL | 目录树      | 并行   |
+| **DependencyAnalyzer**   | 解析依赖关系           | 仓库 URL | 依赖列表     | 并行   |
+| **CodePatternAnalyzer**  | 分析代码模式           | 仓库 URL | 代码模式     | 并行   |
+| **ReadmeGenerator**      | 生成 README        | 分析结果   | README文档 | 并行   |
+| **LearningDocGenerator** | 生成学习文档           | 分析结果   | 学习文档     | 并行   |
+| **SetupGuideGenerator**  | 生成启动指南           | 分析结果   | 启动指南     | 并行   |
+| **Reviewer**             | 文档质量审核           | 生成文档   | 审核结果     | 串行   |
+| **Optimizer**            | 迭代优化文档           | 文档+反馈  | 优化后文档    | 串行   |
 
 ### 2.3 AI 服务
 
-#### OpenAI API
+#### OpenAI API / 智谱 GLM
 
 **推荐理由：**
 
@@ -139,72 +154,143 @@
 - **GitHub API**：官方 API，稳定可靠
 - **LangChain Tool 封装**：可作为 Agent 工具使用
 
-### 2.5 缓存与异步任务
+### 2.5 数据库（v3.0新增）
 
-#### Streamlit Session State (MVP)
-
-- **零配置**：内置会话状态管理
-- **适合 MVP**：无需额外依赖
-
-#### Redis + RQ (异步任务)
+#### SQLite / PostgreSQL
 
 **推荐理由：**
 
-- **后台任务处理**：将耗时分析任务放入后台队列执行
-- **实时进度更新**：通过任务元数据实现真正的进度反馈
-- **任务可取消**：支持取消正在排队的任务
-- **失败重试**：内置重试机制，提高可靠性
-- **结果缓存**：任务结果可缓存，避免重复分析
+- **SQLite**：
+  - 零配置，无需独立服务器
+  - 适合 MVP 和中小规模应用
+  - 单文件存储，易于备份和迁移
+- **PostgreSQL**：
+  - 生产环境首选
+  - 支持高并发和复杂查询
+  - 丰富的数据类型和扩展
+
+**数据库架构：**
+
+```
+┌─────────────────┐     ┌─────────────────┐
+│  repositories   │     │  chat_messages  │
+├─────────────────┤     ├─────────────────┤
+│ id (PK)         │◄────│ repo_id (FK)    │
+│ url             │     │ role            │
+│ name            │     │ content         │
+│ learning_doc    │     │ created_at      │
+│ setup_guide     │     └─────────────────┘
+│ analysis_result │
+│ created_at      │     ┌─────────────────┐
+│ updated_at      │     │    favorites    │
+└────────┬────────┘     ├─────────────────┤
+         │              │ repo_id (FK)    │
+         └─────────────►│ created_at      │
+                        └─────────────────┘
+```
+
+#### SQLAlchemy ORM
+
+**推荐理由：**
+
+- **成熟稳定**：Python 最流行的 ORM 框架
+- **类型安全**：2.0 版本支持完整的类型提示
+- **异步支持**：支持 async/await 模式
+- **迁移工具**：Alembic 提供数据库版本管理
+
+### 2.6 缓存与异步任务
+
+#### Redis
+
+**推荐理由：**
+
+- **高性能缓存**：内存数据库，读写速度极快
+- **任务队列**：支持 RQ/Celery 后台任务处理
+- **实时进度**：通过任务元数据实现真正的进度反馈
+- **会话存储**：可存储用户会话和临时数据
 
 **架构设计：**
 
 ```
-用户请求 ──▶ Streamlit ──▶ Redis Queue ──▶ RQ Worker
+用户请求 ──▶ FastAPI ──▶ Redis Queue ──▶ RQ Worker
                               │
                               ▼
                          任务状态存储
                               │
                               ▼
-                         轮询/回调更新 UI
+                    WebSocket 推送进度
 ```
 
-**RQ 特性：**
+### 2.7 部署平台
 
-- 轻量级任务队列，基于 Redis
-- Python 纯实现，易于集成
-- 支持任务超时、失败重试
-- 提供 Web UI 查看任务状态
-
-### 2.6 部署平台
-
-#### Streamlit Cloud
+#### Railway / 容器化部署
 
 **推荐理由：**
 
-- **免费托管**：对开源项目完全免费
-- **一键部署**：连接 GitHub 自动部署
-- **专为 Streamlit 优化**：无需额外配置
-
-**替代方案：**
-
-- Railway：支持更多自定义配置，适合正式版
-- Docker + 云服务器：完全自主控制，适合大规模部署
+- **Railway**：
+  - 支持 FastAPI + PostgreSQL 一键部署
+  - 自动 HTTPS 和域名
+  - 简单的环境变量管理
+- **Docker**：
+  - 完全自主控制
+  - 易于扩展和迁移
+  - 支持 Kubernetes 编排
 
 ## 3. 项目结构建议
 
 ```
 GitGuide/
-├── app.py                      # Streamlit 主入口
-├── pages/                      # Streamlit 多页面
-│   ├── 1_🏠_Home.py            # 首页（URL 输入）
-│   ├── 2_📚_Documentation.py   # 文档展示页
-│   └── 3_💬_Chat.py            # AI 问答页
+├── app.py                      # Streamlit 主入口（旧版兼容）
+├── pages/                      # Streamlit 页面（旧版）
+│
+├── backend/                    # FastAPI 后端
+│   ├── main.py                 # FastAPI 入口
+│   ├── api/                    # API 路由
+│   │   ├── analyze.py          # 分析 API
+│   │   ├── chat.py             # 问答 API
+│   │   ├── history.py          # 历史 API
+│   │   └── health.py           # 健康检查
+│   ├── models/                 # 数据模型
+│   │   ├── schemas.py          # Pydantic 模型
+│   │   └── database.py         # SQLAlchemy 模型
+│   ├── database/               # 数据库相关
+│   │   ├── connection.py       # 数据库连接
+│   │   ├── crud.py             # CRUD 操作
+│   │   └── migrations/         # Alembic 迁移
+│   ├── websocket/
+│   │   └── manager.py          # WebSocket 管理器
+│   └── tasks.py                # RQ 任务队列
+│
+├── frontend/                   # Vue 3 前端
+│   ├── src/
+│   │   ├── api/                # API 调用
+│   │   ├── views/              # 页面组件
+│   │   ├── stores/             # Pinia 状态管理
+│   │   ├── router/             # 路由配置
+│   │   └── i18n/               # 多语言配置
+│   ├── package.json
+│   └── vite.config.js
 │
 ├── agents/                     # LangChain Agent 定义
 │   ├── __init__.py
-│   ├── orchestrator.py         # 协调器 Agent
-│   ├── analyzer.py             # 仓库分析 Agent
-│   ├── doc_generator.py        # 文档生成 Agent
+│   ├── supervisor.py           # 总监 Agent（v3.1新增）
+│   ├── planner.py              # 规划器 Agent（v3.1新增）
+│   ├── scheduler.py            # 调度器 Agent（v3.1新增）
+│   ├── reviewer.py             # 审核器 Agent（v3.1新增）
+│   ├── optimizer.py            # 优化器 Agent（v3.1新增）
+│   ├── analyzer/               # 分析团队（v3.1重构）
+│   │   ├── type_analyzer.py
+│   │   ├── structure_analyzer.py
+│   │   ├── dependency_analyzer.py
+│   │   └── code_pattern_analyzer.py
+│   ├── generators/             # 生成团队（v3.1重构）
+│   │   ├── readme_generator.py
+│   │   ├── learning_doc_generator.py
+│   │   ├── setup_guide_generator.py
+│   │   └── visual_doc_generator.py
+│   ├── orchestrator.py         # 协调器 Agent（旧版保留）
+│   ├── analyzer.py             # 仓库分析 Agent（旧版保留）
+│   ├── doc_generator.py        # 文档生成 Agent（旧版保留）
 │   └── chat.py                 # 问答 Agent
 │
 ├── tools/                      # Agent 工具
@@ -216,14 +302,12 @@ GitGuide/
 │
 ├── core/                       # 核心业务逻辑
 │   ├── __init__.py
-│   ├── repo_analyzer.py        # 仓库分析逻辑
-│   ├── doc_builder.py          # 文档构建逻辑
-│   └── config.py               # 配置管理
-│
-├── utils/                      # 工具函数
-│   ├── __init__.py
-│   ├── helpers.py              # 辅助函数
-│   └── constants.py            # 常量定义
+│   ├── config.py               # 配置管理
+│   ├── utils.py                # 工具函数
+│   ├── favorites.py            # 收藏管理
+│   ├── history.py              # 历史记录管理
+│   ├── validators.py           # URL 验证
+│   └── context.py              # 共享上下文（v3.1新增）
 │
 ├── memory-bank/                # 项目文档
 ├── requirements.txt            # Python 依赖
@@ -236,8 +320,10 @@ GitGuide/
 ### requirements.txt
 
 ```txt
-# Streamlit
-streamlit>=1.40.0
+# FastAPI
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
 
 # LangChain 1.0+
 langchain>=1.0.0
@@ -251,6 +337,11 @@ openai>=1.57.0
 # 仓库分析
 GitPython>=3.1.41
 PyGithub>=2.1.1
+
+# 数据库（v3.0新增）
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+aiosqlite>=0.19.0
 
 # 数据处理
 pydantic>=2.6.0
@@ -266,151 +357,211 @@ rq>=1.16.0
 
 # Markdown 渲染
 markdown==3.5.2
+
+# PDF 导出
+reportlab>=4.0.0
+weasyprint>=60.0
 ```
 
 ## 5. Agent 工作流实现
 
-### 5.1 Orchestrator Agent
+### 5.1 LangGraph 工作流（v3.1升级）
 
 ```python
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
-# LangChain 1.0+ 使用 langchain_core.messages
 from langchain_core.messages import HumanMessage, AIMessage
-from agents.analyzer import AnalyzerAgent
-from agents.doc_generator import DocGeneratorAgent
-from agents.chat import ChatAgent
+from typing import TypedDict, Annotated
 
-class Orchestrator:
-    def __init__(self):
-        self.llm = ChatOpenAI(model="gpt-4")
-        self.analyzer = AnalyzerAgent(self.llm)
-        self.docgen = DocGeneratorAgent(self.llm)
-        self.chat = ChatAgent(self.llm)
-        
-    def build_workflow(self):
-        workflow = StateGraph(AgentState)
-        
-        workflow.add_node("analyze", self.analyzer.run)
-        workflow.add_node("generate_docs", self.docgen.run)
-        workflow.add_node("chat", self.chat.run)
-        
-        workflow.set_entry_point("analyze")
-        workflow.add_edge("analyze", "generate_docs")
-        workflow.add_edge("generate_docs", END)
-        
-        return workflow.compile()
-```
+class GitGuideState(TypedDict):
+    """GitGuide 全局状态"""
+    repo_url: str
+    analysis_plan: dict
+    type_result: dict
+    structure_result: dict
+    dependency_result: dict
+    learning_doc: str
+    setup_guide: str
+    quality_score: float
+    final_result: dict
+    progress: int
+    current_stage: str
 
-### 5.2 Analyzer Agent 工具定义
-
-```python
-# LangChain 1.0+ 推荐使用 langchain_core.tools
-from langchain_core.tools import tool, Tool
-from tools.github_tools import get_repo_info, get_file_content
-from tools.git_tools import clone_repo, analyze_structure
-
-# 方式1: 使用 @tool 装饰器 (推荐)
-@tool
-def get_repo_info(repo_url: str) -> dict:
-    """获取 GitHub 仓库基本信息"""
-    # 实现...
-
-# 方式2: 使用 Tool 类
-analyzer_tools = [
-    Tool(
-        name="get_repo_info",
-        func=get_repo_info,
-        description="获取 GitHub 仓库基本信息"
-    ),
-    Tool(
-        name="analyze_structure", 
-        func=analyze_structure,
-        description="分析仓库目录结构"
-    ),
-    Tool(
-        name="get_file_content",
-        func=get_file_content,
-        description="获取指定文件内容"
+def build_gitguide_graph():
+    """构建 GitGuide 工作流图"""
+    graph = StateGraph(GitGuideState)
+    
+    # 添加节点
+    graph.add_node("planner", planner_node)
+    graph.add_node("type_analyzer", type_analyzer_node)
+    graph.add_node("structure_analyzer", structure_analyzer_node)
+    graph.add_node("dependency_analyzer", dependency_analyzer_node)
+    graph.add_node("merger", merger_node)
+    graph.add_node("doc_generator", doc_generator_node)
+    graph.add_node("reviewer", reviewer_node)
+    graph.add_node("optimizer", optimizer_node)
+    
+    # 设置入口
+    graph.set_entry_point("planner")
+    
+    # 定义边 - 规划后并行分析
+    graph.add_edge("planner", "type_analyzer")
+    graph.add_edge("planner", "structure_analyzer")
+    graph.add_edge("planner", "dependency_analyzer")
+    
+    # 并行分析后合并
+    graph.add_edge("type_analyzer", "merger")
+    graph.add_edge("structure_analyzer", "merger")
+    graph.add_edge("dependency_analyzer", "merger")
+    
+    # 合并后生成文档
+    graph.add_edge("merger", "doc_generator")
+    
+    # 文档生成后审核
+    graph.add_edge("doc_generator", "reviewer")
+    
+    # 条件路由
+    graph.add_conditional_edges(
+        "reviewer",
+        should_optimize,
+        {True: "optimizer", False: END}
     )
-]
+    
+    return graph.compile()
 ```
 
-## 6. Streamlit 界面实现
-
-### 6.1 主页面
+### 5.2 并行执行实现
 
 ```python
-import streamlit as st
-from agents.orchestrator import Orchestrator
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
-st.set_page_config(page_title="GitGuide", page_icon="🚀")
-
-st.title("🚀 GitGuide")
-st.markdown("快速上手任意 GitHub 仓库")
-
-url = st.text_input("输入 GitHub 仓库 URL", placeholder="https://github.com/user/repo")
-
-if st.button("生成文档", type="primary"):
-    if url:
-        with st.spinner("正在分析仓库..."):
-            orchestrator = Orchestrator()
-            result = orchestrator.run(url)
-            st.session_state["analysis_result"] = result
-        st.switch_page("pages/2_📚_Documentation.py")
+class ParallelExecutor:
+    """并行执行器"""
+    
+    def __init__(self, max_workers: int = 4):
+        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+        
+    async def execute_parallel(
+        self, 
+        tasks: list, 
+        context: SharedContext
+    ) -> list:
+        """并行执行任务"""
+        loop = asyncio.get_event_loop()
+        
+        futures = [
+            loop.run_in_executor(
+                self.executor,
+                task.run,
+                context
+            )
+            for task in tasks
+        ]
+        
+        results = await asyncio.gather(*futures, return_exceptions=True)
+        
+        return results
 ```
 
-### 6.2 文档页面
+## 6. 数据库操作实现（v3.0新增）
+
+### 6.1 SQLAlchemy 模型定义
 
 ```python
-import streamlit as st
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from datetime import datetime
+from backend.models.database import Base
 
-st.title("📚 学习文档")
-
-result = st.session_state.get("analysis_result")
-
-if result:
-    tab1, tab2 = st.tabs(["学习文档", "启动指南"])
+class Repository(Base):
+    __tablename__ = "repositories"
     
-    with tab1:
-        st.markdown(result["learning_doc"])
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(String(500), unique=True, nullable=False)
+    name = Column(String(200))
+    description = Column(Text)
+    language = Column(String(50))
+    stars = Column(Integer, default=0)
+    learning_doc = Column(Text)
+    setup_guide = Column(Text)
+    analysis_result = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    with tab2:
-        for i, step in enumerate(result["setup_guide"], 1):
-            st.markdown(f"### 步骤 {i}: {step['title']}")
-            st.code(step["command"], language="bash")
+    chat_messages = relationship("ChatMessage", back_populates="repository")
+    favorites = relationship("Favorite", back_populates="repository")
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    repo_id = Column(Integer, ForeignKey("repositories.id"))
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    repository = relationship("Repository", back_populates="chat_messages")
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    repo_id = Column(Integer, ForeignKey("repositories.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    repository = relationship("Repository", back_populates="favorites")
 ```
 
-### 6.3 AI 问答页面
+### 6.2 CRUD 操作
 
 ```python
-import streamlit as st
-from agents.chat import ChatAgent
+from sqlalchemy.orm import Session
+from backend.models.database import Repository, ChatMessage, Favorite
 
-st.title("💬 AI 问答")
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-if prompt := st.chat_input("问关于这个项目的问题..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+class RepositoryCRUD:
+    def create_repository(self, db: Session, repo_data: dict) -> Repository:
+        db_repo = Repository(**repo_data)
+        db.add(db_repo)
+        db.commit()
+        db.refresh(db_repo)
+        return db_repo
     
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    def get_by_url(self, db: Session, url: str) -> Repository:
+        return db.query(Repository).filter(Repository.url == url).first()
     
-    with st.chat_message("assistant"):
-        chat_agent = ChatAgent()
-        response = chat_agent.run(
-            prompt, 
-            context=st.session_state.get("analysis_result")
+    def update_repository(self, db: Session, url: str, update_data: dict) -> Repository:
+        db_repo = self.get_by_url(db, url)
+        if db_repo:
+            for key, value in update_data.items():
+                setattr(db_repo, key, value)
+            db.commit()
+            db.refresh(db_repo)
+        return db_repo
+
+class ChatMessageCRUD:
+    def create_message(self, db: Session, repo_id: int, role: str, content: str) -> ChatMessage:
+        db_message = ChatMessage(
+            repo_id=repo_id,
+            role=role,
+            content=content
         )
-        st.markdown(response)
+        db.add(db_message)
+        db.commit()
+        db.refresh(db_message)
+        return db_message
     
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    def get_messages_by_repo(self, db: Session, repo_id: int) -> list:
+        return db.query(ChatMessage).filter(
+            ChatMessage.repo_id == repo_id
+        ).order_by(ChatMessage.created_at).all()
+    
+    def delete_messages_by_repo(self, db: Session, repo_id: int) -> int:
+        deleted = db.query(ChatMessage).filter(
+            ChatMessage.repo_id == repo_id
+        ).delete()
+        db.commit()
+        return deleted
 ```
 
 ## 7. 环境变量配置
@@ -420,7 +571,11 @@ if prompt := st.chat_input("问关于这个项目的问题..."):
 ```env
 # OpenAI API
 OPENAI_API_KEY=your_openai_api_key
+OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4
+
+# 智谱 GLM（可选）
+ZHIPU_API_KEY=your_zhipu_api_key
 
 # GitHub API (可选，提高速率限制)
 GITHUB_TOKEN=your_github_token
@@ -429,59 +584,69 @@ GITHUB_TOKEN=your_github_token
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=your_langchain_api_key
 
-# Redis (可选)
-REDIS_URL=your_redis_url
+# 数据库配置（v3.0新增）
+DATABASE_URL=sqlite:///./gitguide.db
+# 或 PostgreSQL: postgresql://user:password@localhost/gitguide
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
 
 # 应用配置
 APP_ENV=development
 DEBUG=true
+SECRET_KEY=your_secret_key_here
 ```
 
 ## 8. 技术风险与应对
 
-| 风险            | 影响       | 应对方案                        |
-| :------------ | :------- | :-------------------------- |
-| OpenAI API 限流 | AI 功能不可用 | 实现请求队列、降级到 GPT-3.5          |
-| GitHub API 限流 | 仓库分析失败   | 使用 Token 认证、缓存结果            |
-| 大仓库分析慢        | 用户体验差    | 显示进度条、限制文件大小、异步处理           |
-| Streamlit 性能  | 并发能力有限   | MVP 阶段可接受，正式版迁移至 FastAPI    |
-| Agent 输出不稳定   | 文档质量波动   | 使用 structured output、添加校验逻辑 |
+| 风险            | 影响       | 应对方案                             |
+| :------------ | :------- | :------------------------------- |
+| OpenAI API 限流 | AI 功能不可用 | 实现请求队列、降级到 GPT-3.5、支持智谱GLM       |
+| GitHub API 限流 | 仓库分析失败   | 使用 Token 认证、缓存结果                 |
+| 大仓库分析慢        | 用户体验差    | 显示进度条、并行处理、限制文件大小                |
+| 数据库性能瓶颈       | 查询变慢     | 添加索引、使用连接池、考虑分库分表                |
+| Agent 输出不稳定   | 文档质量波动   | 使用 structured output、添加校验逻辑、多轮优化 |
+| 并发问题          | 数据不一致    | 使用数据库事务、乐观锁                      |
 
 ## 9. 技术栈优势总结
 
-### MVP 阶段优势
+### 当前版本优势
 
-1. **开发效率极高**：Streamlit + LangChain 可在 3-5 天内完成 MVP
-2. **纯 Python 技术栈**：无需前后端分离，降低学习成本
-3. **AI 能力强大**：LangChain 多 Agent 架构，功能扩展灵活
-4. **部署零成本**：Streamlit Cloud 免费托管
+1. **前后端分离**：Vue 3 + FastAPI 架构清晰，易于维护
+2. **AI 能力强大**：LangChain 多 Agent 架构，功能扩展灵活
+3. **数据持久化**：SQLite/PostgreSQL 支持数据长期存储
+4. **实时通信**：WebSocket 实现真正的实时进度反馈
 
-### 迁移路径清晰
+### v3.1 升级后优势
 
-- **前端**：Streamlit → React + Vite（提升用户体验）
-- **后端**：Streamlit 内置 → FastAPI（提升性能和并发）
-- **Agent**：LangChain 保持不变（架构成熟）
+1. **并行处理**：多Agent并行执行，分析效率提升70%+
+2. **质量保证**：SOP标准化流程 + 多轮审核优化
+3. **深度分析**：多维度代码分析能力
+4. **可扩展性**：模块化设计，易于添加新Agent
 
 ## 10. 后续优化方向
 
-### MVP 后第一优先级
+### v3.0 数据持久化
 
-- **迁移前端**：从 Streamlit 迁移至 React，提升定制性
-- **分离后端**：引入 FastAPI，支持更高并发
+- **数据库集成**：SQLite → PostgreSQL（生产环境）
+- **数据迁移**：Alembic 版本管理
+- **缓存策略**：Redis 缓存分析结果
 
-### 功能扩展
+### v3.1 Multi-Agent 升级
 
-- **支持更多模型**：集成 Claude、开源模型
+- **并行处理**：asyncio + ThreadPoolExecutor
+- **状态管理**：LangGraph StateGraph
+- **质量控制**：Reviewer + Optimizer Agent
+
+### v3.2+ 高级功能
+
+- **向量存储**：集成向量数据库支持语义搜索
+- **多 LLM 支持**：Claude、开源模型
 - **私有仓库**：OAuth 授权支持
-- **导出功能**：PDF、Markdown 导出
-- **代码图谱**：生成项目依赖关系图
-
-### 性能优化
-
-- **引入 Redis**：持久化缓存分析结果
-- **异步处理**：Celery 任务队列
-- **CDN 加速**：静态资源分发
+- **容器化**：Docker + Kubernetes 部署
 
 ***
 
-本技术栈推荐基于 **MVP 快速验证** 的核心目标，选择 Streamlit + LangChain 组合，可在最短时间内交付可用产品。后续可根据用户反馈和业务需求，平滑迁移至更成熟的架构。
+本技术栈推荐基于 **Vue 3 + FastAPI + LangChain** 架构，支持数据持久化和 Multi-Agent 并行处理，为 GitGuide 提供高性能、高可扩展性的技术基础。
+
+*Last updated: 2026-03-20*
