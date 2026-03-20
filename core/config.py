@@ -39,7 +39,7 @@ def get_llm():
         # 尝试使用默认的 GPT-3.5-turbo
         try:
             return ChatOpenAI(
-                model="ark-code-latest",
+                model="glm-4.7",
                 api_key=Config.OPENAI_API_KEY,
                 temperature=0.3
             )

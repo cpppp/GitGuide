@@ -1,13 +1,13 @@
 <template>
   <div class="docs">
     <div class="header">
-      <el-button text @click="$router.push('/')">← 返回首页</el-button>
-      <h1 class="title">{{ repoInfo?.name || '文档' }}</h1>
+      <el-button text @click="$router.push('/')">← {{ language === 'zh' ? '返回首页' : 'Back' }}</el-button>
+      <h1 class="title">{{ repoInfo?.name || (language === 'zh' ? '文档' : 'Docs') }}</h1>
     </div>
 
     <div v-if="!store.result" class="empty-state">
-      <el-empty description="暂无分析结果，请先分析仓库">
-        <el-button type="primary" @click="$router.push('/')">去分析</el-button>
+      <el-empty :description="language === 'zh' ? '暂无分析结果，请先分析仓库' : 'No analysis result, please analyze a repo first'">
+        <el-button type="primary" @click="$router.push('/')">{{ language === 'zh' ? '去分析' : 'Go to Analyze' }}</el-button>
       </el-empty>
     </div>
 
@@ -20,31 +20,47 @@
           <div class="repo-meta">
             <el-tag v-if="repoInfo?.language">{{ repoInfo.language }}</el-tag>
             <span>⭐ {{ repoInfo?.stargazers_count || 0 }}</span>
-            <a :href="repoInfo?.html_url" target="_blank">在 GitHub 查看 →</a>
+            <a :href="repoInfo?.html_url" target="_blank">{{ language === 'zh' ? '在 GitHub 查看 →' : 'View on GitHub →' }}</a>
           </div>
           <el-button
             :type="isFavorited ? 'warning' : 'default'"
             @click="handleToggleFavorite"
           >
-            {{ isFavorited ? '⭐ 已收藏' : '☆ 收藏' }}
+            {{ isFavorited ? (language === 'zh' ? '⭐ 已收藏' : '⭐ Favorited') : (language === 'zh' ? '☆ 收藏' : '☆ Favorite') }}
           </el-button>
         </div>
       </el-card>
 
       <!-- 文档标签页 -->
       <el-tabs v-model="activeTab" class="doc-tabs">
-        <el-tab-pane label="学习文档" name="learning">
+        <el-tab-pane :label="language === 'zh' ? '学习文档' : 'Learning Docs'" name="learning">
           <div class="markdown-content" v-html="renderMarkdown(store.result?.learning_doc || '')"></div>
         </el-tab-pane>
-        <el-tab-pane label="启动指南" name="setup">
+        <el-tab-pane :label="language === 'zh' ? '启动指南' : 'Setup Guide'" name="setup">
           <div class="markdown-content" v-html="renderMarkdown(store.result?.setup_guide || '')"></div>
+        </el-tab-pane>
+        <el-tab-pane :label="language === 'zh' ? '代码图谱' : 'Code Atlas'" name="atlas">
+          <CodeAtlas :result="store.result" :loading="false" />
         </el-tab-pane>
       </el-tabs>
 
       <!-- 操作按钮 -->
       <div class="actions">
-        <el-button type="primary" @click="$router.push('/chat')">💬 AI 问答</el-button>
-        <el-button @click="handleExport">📥 导出 Markdown</el-button>
+        <el-button type="primary" @click="$router.push('/chat')">{{ language === 'zh' ? '💬 AI 问答' : '💬 AI Chat' }}</el-button>
+
+        <!-- 导出下拉菜单 -->
+        <el-dropdown @command="handleExport">
+          <el-button>
+            📥 {{ language === 'zh' ? '导出' : 'Export' }}
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="markdown">📄 Markdown</el-dropdown-item>
+              <el-dropdown-item command="html">🌐 HTML</el-dropdown-item>
+              <el-dropdown-item command="pdf">📑 PDF</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
   </div>
@@ -54,13 +70,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAnalysisStore } from '@/stores/analysis'
+import { useSettingsStore } from '@/stores/settings'
+import { storeToRefs } from 'pinia'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import { getFavorites, addFavorite, removeFavorite } from '@/api/analyze'
 import { ElMessage } from 'element-plus'
+import CodeAtlas from '@/components/CodeAtlas.vue'
+import { exportToMarkdown, exportToHTML, exportToPDF, downloadFile } from '@/utils/export'
 
 const router = useRouter()
 const store = useAnalysisStore()
+const settingsStore = useSettingsStore()
+const { language } = storeToRefs(settingsStore)
 
 const activeTab = ref('learning')
 const favorites = ref([])
@@ -93,26 +115,38 @@ async function handleToggleFavorite() {
   try {
     if (isFavorited.value) {
       await removeFavorite(url)
-      ElMessage.success('已取消收藏')
+      ElMessage.success(language.value === 'zh' ? '已取消收藏' : 'Unfavorited')
     } else {
       await addFavorite(url)
-      ElMessage.success('收藏成功')
+      ElMessage.success(language.value === 'zh' ? '收藏成功' : 'Favorited')
     }
     loadFavorites()
   } catch (e) {
-    ElMessage.error('操作失败')
+    ElMessage.error(language.value === 'zh' ? '操作失败' : 'Operation failed')
   }
 }
 
-function handleExport() {
-  const content = `# ${repoInfo.value?.full_name}\n\n${store.result?.learning_doc || ''}\n\n---\n\n# 启动指南\n\n${store.result?.setup_guide || ''}`
-  const blob = new Blob([content], { type: 'text/markdown' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${repoInfo.value?.name || 'docs'}.md`
-  a.click()
-  URL.revokeObjectURL(url)
+function handleExport(command) {
+  const result = store.result
+  const repoName = repoInfo.value?.name || 'docs'
+
+  switch (command) {
+    case 'markdown':
+      const mdContent = exportToMarkdown(result)
+      downloadFile(mdContent, `${repoName}.md`, 'text/markdown')
+      ElMessage.success(language.value === 'zh' ? '已导出 Markdown' : 'Markdown exported')
+      break
+
+    case 'html':
+      const htmlContent = exportToHTML(result)
+      downloadFile(htmlContent, `${repoName}.html`, 'text/html')
+      ElMessage.success(language.value === 'zh' ? '已导出 HTML' : 'HTML exported')
+      break
+
+    case 'pdf':
+      exportToPDF(result)
+      break
+  }
 }
 
 async function loadFavorites() {
@@ -160,7 +194,7 @@ onMounted(() => {
 }
 
 .repo-info p {
-  color: #666;
+  color: var(--text-color-secondary, #666);
   margin-bottom: 15px;
 }
 
@@ -171,13 +205,17 @@ onMounted(() => {
   margin-bottom: 15px;
 }
 
+.repo-meta a {
+  color: var(--primary-color);
+}
+
 .doc-tabs {
   margin-bottom: 20px;
 }
 
 .markdown-content {
   padding: 20px;
-  background: #fff;
+  background: var(--bg-color-secondary, #fff);
   border-radius: 4px;
   line-height: 1.6;
 }
@@ -186,7 +224,7 @@ onMounted(() => {
   font-size: 1.8em;
   margin: 0 0 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color, #eee);
 }
 
 .markdown-content :deep(h2) {
@@ -200,14 +238,14 @@ onMounted(() => {
 }
 
 .markdown-content :deep(code) {
-  background: #f5f5f5;
+  background: var(--bg-color, #f5f5f5);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 0.9em;
 }
 
 .markdown-content :deep(pre) {
-  background: #f5f5f5;
+  background: var(--bg-color, #f5f5f5);
   padding: 15px;
   border-radius: 6px;
   overflow-x: auto;

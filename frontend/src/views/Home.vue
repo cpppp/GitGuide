@@ -1,24 +1,24 @@
 <template>
   <div class="home">
     <div class="header">
-      <h1 class="title">🚀 GitGuide</h1>
-      <p class="subtitle">快速上手任意 GitHub 仓库</p>
+      <h1 class="title">{{ t('app.title', language) }}</h1>
+      <p class="subtitle">{{ t('app.subtitle', language) }}</p>
     </div>
 
     <el-card class="input-card">
       <el-input
         v-model="repoUrl"
-        placeholder="https://github.com/user/repo"
+        :placeholder="t('home.inputPlaceholder', language)"
         size="large"
         :disabled="store.isAnalyzing"
         @keyup.enter="handleAnalyze"
       >
-        <template #prepend>仓库 URL</template>
+        <template #prepend>{{ language === 'zh' ? '仓库 URL' : 'Repo URL' }}</template>
       </el-input>
 
       <el-radio-group v-model="analysisMode" class="mode-select" :disabled="store.isAnalyzing">
-        <el-radio value="fast">快速模式（约30秒）</el-radio>
-        <el-radio value="detailed">详细模式（约2分钟）</el-radio>
+        <el-radio value="fast">{{ t('home.fastMode', language) }}</el-radio>
+        <el-radio value="detailed">{{ t('home.detailedMode', language) }}</el-radio>
       </el-radio-group>
 
       <el-button
@@ -28,7 +28,7 @@
         :loading="store.isAnalyzing"
         @click="handleAnalyze"
       >
-        {{ store.isAnalyzing ? '分析中...' : '生成文档' }}
+        {{ store.isAnalyzing ? t('home.analyzing', language) : t('home.analyzeBtn', language) }}
       </el-button>
     </el-card>
 
@@ -52,11 +52,11 @@
           }"
         >
           <span class="stage-icon">{{ getStageIndex(store.stageKey) > index ? '✅' : getStageIndex(store.stageKey) === index ? '🔄' : '⏳' }}</span>
-          {{ stage.name }}
+          {{ language === 'zh' ? stage.name : stage.nameEn }}
         </div>
       </div>
 
-      <el-button type="danger" @click="handleCancel">取消分析</el-button>
+      <el-button type="danger" @click="handleCancel">{{ language === 'zh' ? '取消分析' : 'Cancel' }}</el-button>
     </el-card>
 
     <!-- 错误提示 -->
@@ -65,11 +65,11 @@
     <!-- 示例仓库 -->
     <el-card class="example-card">
       <template #header>
-        <span>示例仓库</span>
+        <span>{{ t('home.examples', language) }}</span>
       </template>
       <div v-for="[repo, desc] in exampleRepos" :key="repo" class="example-item">
-        <span><strong>{{ repo }}</strong> - {{ desc }}</span>
-        <el-button size="small" :disabled="store.isAnalyzing" @click="handleExample(repo)">试用</el-button>
+        <span><strong>{{ repo }}</strong> - {{ language === 'zh' ? desc[0] : desc[1] }}</span>
+        <el-button size="small" :disabled="store.isAnalyzing" @click="handleExample(repo)">{{ language === 'zh' ? '试用' : 'Try' }}</el-button>
       </div>
     </el-card>
 
@@ -77,15 +77,15 @@
     <el-card class="history-card">
       <template #header>
         <div class="card-header">
-          <span>📜 历史记录</span>
-          <el-button v-if="history.length > 0" text @click="handleClearHistory">清除历史</el-button>
+          <span>{{ t('home.history', language) }}</span>
+          <el-button v-if="history.length > 0" text @click="handleClearHistory">{{ t('home.clearHistory', language) }}</el-button>
         </div>
       </template>
-      <div v-if="history.length === 0" class="empty-text">暂无历史记录</div>
+      <div v-if="history.length === 0" class="empty-text">{{ t('home.noHistory', language) }}</div>
       <div v-else>
         <div v-for="(item, index) in history.slice(0, 5)" :key="index" class="history-item">
           <span><strong>{{ item.name }}</strong> ({{ item.timestamp?.slice(0, 10) }})</span>
-          <el-button size="small" :disabled="store.isAnalyzing" @click="handleHistory(item.url)">重新分析</el-button>
+          <el-button size="small" :disabled="store.isAnalyzing" @click="handleHistory(item.url)">{{ t('home.reAnalyze', language) }}</el-button>
         </div>
       </div>
     </el-card>
@@ -93,15 +93,15 @@
     <!-- 收藏仓库 -->
     <el-card class="favorites-card">
       <template #header>
-        <span>⭐ 收藏仓库</span>
+        <span>{{ t('home.favorites', language) }}</span>
       </template>
-      <div v-if="favorites.length === 0" class="empty-text">暂无收藏仓库</div>
+      <div v-if="favorites.length === 0" class="empty-text">{{ t('home.noFavorites', language) }}</div>
       <div v-else>
         <div v-for="(item, index) in favorites" :key="index" class="favorite-item">
           <span><strong>{{ item.name }}</strong> {{ item.language ? `_${item.language}_` : '' }}</span>
           <div>
-            <el-button size="small" :disabled="store.isAnalyzing" @click="handleFavorite(item.url)">查看文档</el-button>
-            <el-button size="small" type="danger" text @click="handleUnfavorite(item.url)">移除</el-button>
+            <el-button size="small" :disabled="store.isAnalyzing" @click="handleFavorite(item.url)">{{ t('home.viewDocs', language) }}</el-button>
+            <el-button size="small" type="danger" text @click="handleUnfavorite(item.url)">{{ t('home.remove', language) }}</el-button>
           </div>
         </div>
       </div>
@@ -113,11 +113,16 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAnalysisStore } from '@/stores/analysis'
+import { useSettingsStore } from '@/stores/settings'
+import { storeToRefs } from 'pinia'
 import { getHistory, clearHistory, getFavorites, removeFavorite } from '@/api/analyze'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { t } from '@/i18n'
 
 const router = useRouter()
 const store = useAnalysisStore()
+const settingsStore = useSettingsStore()
+const { language } = storeToRefs(settingsStore)
 
 const repoUrl = ref('')
 const analysisMode = ref('fast')
@@ -129,11 +134,13 @@ function handleAnalysisCompleted(event) {
   const result = event.detail
   if (result) {
     ElMessageBox.alert(
-      '文档生成完成！点击"查看文档"按钮查看生成的学习文档和启动指南。',
-      '✅ 分析完成',
+      language.value === 'zh'
+        ? '文档生成完成！点击"查看文档"按钮查看生成的学习文档和启动指南。'
+        : 'Documentation generated! Click "View Docs" to see the learning docs and setup guide.',
+      language.value === 'zh' ? '✅ 分析完成' : '✅ Analysis Complete',
       {
-        confirmButtonText: '查看文档',
-        cancelButtonText: '留在本页',
+        confirmButtonText: language.value === 'zh' ? '查看文档' : 'View Docs',
+        cancelButtonText: language.value === 'zh' ? '留在本页' : 'Stay Here',
         type: 'success'
       }
     ).then(() => {
@@ -152,20 +159,21 @@ onUnmounted(() => {
   window.removeEventListener('analysis-completed', handleAnalysisCompleted)
 })
 
+// 示例仓库: [repo, [中文描述, 英文描述]]
 const exampleRepos = [
-  ['python/cpython', 'Python 官方解释器'],
-  ['facebook/react', 'React 前端框架'],
-  ['gin-gonic/gin', 'Go Web 框架']
+  ['python/cpython', ['Python 官方解释器', 'Python Interpreter']],
+  ['facebook/react', ['React 前端框架', 'React Frontend Framework']],
+  ['gin-gonic/gin', ['Go Web 框架', 'Go Web Framework']]
 ]
 
 const stages = [
-  { key: 'validating', name: '正在验证仓库...' },
-  { key: 'getting_repo_info', name: '正在获取仓库信息...' },
-  { key: 'analyzing_structure', name: '正在分析目录结构...' },
-  { key: 'generating_learning_doc', name: '正在生成学习文档...' },
-  { key: 'generating_setup_guide', name: '正在生成启动指南...' },
-  { key: 'finalizing', name: '正在整理结果...' },
-  { key: 'completed', name: '完成！' }
+  { key: 'validating', name: '正在验证仓库...', nameEn: 'Validating repository...' },
+  { key: 'getting_repo_info', name: '正在获取仓库信息...', nameEn: 'Fetching repo info...' },
+  { key: 'analyzing_structure', name: '正在分析目录结构...', nameEn: 'Analyzing structure...' },
+  { key: 'generating_learning_doc', name: '正在生成学习文档...', nameEn: 'Generating learning docs...' },
+  { key: 'generating_setup_guide', name: '正在生成启动指南...', nameEn: 'Generating setup guide...' },
+  { key: 'finalizing', name: '正在整理结果...', nameEn: 'Finalizing...' },
+  { key: 'completed', name: '完成！', nameEn: 'Complete!' }
 ]
 
 function getStageIndex(key) {
@@ -174,13 +182,13 @@ function getStageIndex(key) {
 
 async function handleAnalyze() {
   if (!repoUrl.value) {
-    ElMessage.error('请输入 GitHub 仓库 URL')
+    ElMessage.error(language.value === 'zh' ? '请输入 GitHub 仓库 URL' : 'Please enter a GitHub repo URL')
     return
   }
 
   // 验证 URL 格式
   if (!repoUrl.value.includes('github.com')) {
-    ElMessage.error('请输入有效的 GitHub 仓库 URL')
+    ElMessage.error(language.value === 'zh' ? '请输入有效的 GitHub 仓库 URL' : 'Please enter a valid GitHub repo URL')
     return
   }
 
@@ -277,7 +285,7 @@ onMounted(() => {
 }
 
 .subtitle {
-  color: #666;
+  color: var(--text-color-secondary, #666);
   font-size: 1.2em;
 }
 
@@ -305,7 +313,7 @@ onMounted(() => {
 .progress-message {
   margin: 15px 0;
   text-align: center;
-  color: #409eff;
+  color: var(--primary-color, #409eff);
 }
 
 .stage-list {
@@ -322,7 +330,7 @@ onMounted(() => {
 }
 
 .stage-current {
-  color: #409eff;
+  color: var(--primary-color, #409eff);
 }
 
 .stage-icon {
@@ -348,7 +356,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color, #eee);
 }
 
 .example-item:last-child,
@@ -358,7 +366,7 @@ onMounted(() => {
 }
 
 .empty-text {
-  color: #999;
+  color: var(--text-color-secondary, #999);
   text-align: center;
   padding: 20px;
 }

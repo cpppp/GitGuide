@@ -1,14 +1,14 @@
 <template>
   <div class="chat">
     <div class="header">
-      <el-button text @click="$router.push('/')">← 返回首页</el-button>
-      <el-button text @click="$router.push('/docs')">📚 文档</el-button>
-      <h1 class="title">💬 AI 问答</h1>
+      <el-button text @click="$router.push('/')">← {{ language === 'zh' ? '返回首页' : 'Back' }}</el-button>
+      <el-button text @click="$router.push('/docs')">📚 {{ language === 'zh' ? '文档' : 'Docs' }}</el-button>
+      <h1 class="title">💬 {{ t('chat.title', language) }}</h1>
     </div>
 
     <div v-if="!store.result" class="empty-state">
-      <el-empty description="暂无分析结果，请先分析仓库">
-        <el-button type="primary" @click="$router.push('/')">去分析</el-button>
+      <el-empty :description="t('chat.noContext', language)">
+        <el-button type="primary" @click="$router.push('/')">{{ language === 'zh' ? '去分析' : 'Go to Analyze' }}</el-button>
       </el-empty>
     </div>
 
@@ -21,12 +21,12 @@
       <!-- 聊天消息 -->
       <div class="messages" ref="messagesRef">
         <div v-if="messages.length === 0" class="welcome-message">
-          <p>你好！我是 GitGuide AI 助手。</p>
-          <p>你可以问我关于这个项目的问题，例如：</p>
+          <p>{{ language === 'zh' ? '你好！我是 GitGuide AI 助手。' : 'Hello! I am GitGuide AI Assistant.' }}</p>
+          <p>{{ language === 'zh' ? '你可以问我关于这个项目的问题，例如：' : 'You can ask me questions about this project, for example:' }}</p>
           <ul>
-            <li>如何安装这个项目？</li>
-            <li>这个项目的主要功能是什么？</li>
-            <li>如何运行这个项目？</li>
+            <li>{{ language === 'zh' ? '如何安装这个项目？' : 'How to install this project?' }}</li>
+            <li>{{ language === 'zh' ? '这个项目的主要功能是什么？' : 'What are the main features of this project?' }}</li>
+            <li>{{ language === 'zh' ? '如何运行这个项目？' : 'How to run this project?' }}</li>
           </ul>
         </div>
 
@@ -47,7 +47,7 @@
         <div v-if="isLoading" class="message assistant">
           <div class="message-avatar">🤖</div>
           <div class="message-content">
-            <span class="loading-dots">思考中...</span>
+            <span class="loading-dots">{{ language === 'zh' ? '思考中...' : 'Thinking...' }}</span>
           </div>
         </div>
       </div>
@@ -56,12 +56,12 @@
       <div class="input-area">
         <el-input
           v-model="inputMessage"
-          placeholder="问关于这个项目的问题..."
+          :placeholder="t('chat.placeholder', language)"
           :disabled="isLoading"
           @keyup.enter="handleSend"
         >
           <template #append>
-            <el-button :loading="isLoading" @click="handleSend">发送</el-button>
+            <el-button :loading="isLoading" @click="handleSend">{{ t('chat.send', language) }}</el-button>
           </template>
         </el-input>
       </div>
@@ -70,12 +70,12 @@
       <div class="quick-questions">
         <el-button
           v-for="q in quickQuestions"
-          :key="q"
+          :key="q.zh"
           size="small"
           text
-          @click="inputMessage = q"
+          @click="inputMessage = language === 'zh' ? q.zh : q.en"
         >
-          {{ q }}
+          {{ language === 'zh' ? q.zh : q.en }}
         </el-button>
       </div>
     </div>
@@ -86,22 +86,28 @@
 import { ref, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAnalysisStore } from '@/stores/analysis'
+import { useSettingsStore } from '@/stores/settings'
+import { storeToRefs } from 'pinia'
 import { sendChat } from '@/api/chat'
 import { ElMessage } from 'element-plus'
+import { t } from '@/i18n'
 
 const router = useRouter()
 const store = useAnalysisStore()
+const settingsStore = useSettingsStore()
+const { language } = storeToRefs(settingsStore)
 
 const inputMessage = ref('')
 const messages = ref([])
 const isLoading = ref(false)
 const messagesRef = ref(null)
 
+// 快捷问题: [中文, 英文]
 const quickQuestions = [
-  '如何安装这个项目？',
-  '如何运行这个项目？',
-  '这个项目的主要功能是什么？',
-  '项目使用了什么技术栈？'
+  { zh: '如何安装这个项目？', en: 'How to install this project?' },
+  { zh: '如何运行这个项目？', en: 'How to run this project?' },
+  { zh: '这个项目的主要功能是什么？', en: 'What are the main features of this project?' },
+  { zh: '项目使用了什么技术栈？', en: 'What tech stack does this project use?' }
 ]
 
 async function handleSend() {
@@ -128,11 +134,11 @@ async function handleSend() {
       messages.value.push({ role: 'assistant', content: response.data.response })
     } else {
       ElMessage.error(response.data.response)
-      messages.value.push({ role: 'assistant', content: '抱歉，我遇到了问题，请稍后重试。' })
+      messages.value.push({ role: 'assistant', content: language.value === 'zh' ? '抱歉，我遇到了问题，请稍后重试。' : 'Sorry, I encountered an issue. Please try again later.' })
     }
   } catch (e) {
-    ElMessage.error('请求失败: ' + (e.response?.data?.detail || e.message))
-    messages.value.push({ role: 'assistant', content: '抱歉，服务出错 了。' })
+    ElMessage.error(language.value === 'zh' ? '请求失败: ' : 'Request failed: ' + (e.response?.data?.detail || e.message))
+    messages.value.push({ role: 'assistant', content: language.value === 'zh' ? '抱歉，服务出错了。' : 'Sorry, an error occurred.' })
   }
 
   isLoading.value = false
@@ -149,7 +155,7 @@ function scrollToBottom() {
 
 onMounted(() => {
   if (!store.result) {
-    ElMessage.warning('请先分析仓库')
+    ElMessage.warning(language.value === 'zh' ? '请先分析仓库' : 'Please analyze a repo first')
     router.push('/')
   }
 })
@@ -187,15 +193,15 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--bg-color-secondary, #fff);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .repo-badge {
   padding: 10px 20px;
-  background: #f5f7fa;
-  border-bottom: 1px solid #eee;
+  background: var(--bg-color, #f5f7fa);
+  border-bottom: 1px solid var(--border-color, #eee);
 }
 
 .messages {
@@ -205,7 +211,7 @@ onMounted(() => {
 }
 
 .welcome-message {
-  color: #666;
+  color: var(--text-color-secondary, #666);
   line-height: 1.8;
 }
 
@@ -233,13 +239,13 @@ onMounted(() => {
 }
 
 .message.user .message-content {
-  background: #409eff;
+  background: var(--primary-color, #409eff);
   color: #fff;
 }
 
 .message.assistant .message-content {
-  background: #f5f7fa;
-  color: #333;
+  background: var(--bg-color, #f5f7fa);
+  color: var(--text-color, #333);
 }
 
 .loading-dots {
@@ -248,7 +254,7 @@ onMounted(() => {
 
 .input-area {
   padding: 15px 20px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-color, #eee);
 }
 
 .input-area .el-input {

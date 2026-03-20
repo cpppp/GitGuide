@@ -4,3 +4,4 @@
 docs
 frontend/node_modules
 backend/__pycache__
+CHANGELOG.md
