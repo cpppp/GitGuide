@@ -1,18 +1,21 @@
 # GitGuide 项目实施计划
 
-> **文档版本**：v3.0  
-> **最后更新**：2026-03-20  
-> **更新说明**：基于产品设计文档v3.0，新增数据持久化和Multi-Agent架构升级迭代
+> **文档版本**：v3.2\
+> **最后更新**：2026-03-20\
+> **更新说明**：V3.1 Multi-Agent架构升级，V3.2 文档质量提升
 
 ***
 
 ## 概述
 
-本文档基于产品设计文档 v3.0，详细规划 GitGuide 项目的后续实施步骤。MVP 阶段已完成，后续将按照迭代阶段逐步推进。
+本文档基于产品设计文档 v3.2，详细规划 GitGuide 项目的后续实施步骤。MVP 阶段已完成，V3.0 数据持久化已完成，当前重点为 V3.1 Multi-Agent架构升级 和 V3.2 文档质量提升。
 
-**项目状态**：v2.1 已完成 ✅
+**项目状态**：v3.0 已完成 ✅
 
-**核心目标**：将 GitGuide 从 MVP 升级为功能完善、用户体验优秀的 GitHub 仓库分析工具。
+**核心目标**：
+
+1. V3.1：升级 Multi-Agent 架构，实现并行处理，提高分析效率
+2. V3.2：基于新学习者需求，全面提升文档质量和实用性
 
 ***
 
@@ -30,283 +33,52 @@
 
 ### 用户体验优化（v1.1 - 已完成）
 
-| 功能     | 状态 | 说明                    |
-| :----- | :- | :-------------------- |
-| 进度反馈 | ✅  | 实时进度条、分阶段状态提示 |
-| 错误处理 | ✅  | URL验证、API限流提示、自动重试 |
-| 历史记录 | ✅
-
-### 用户体验优化（v1.1 - 已完成）
-
-| 功能     | 状态 | 说明                    |
-| :----- | :- | :-------------------- |
-| 进度反馈 | ✅  | 实时进度条和状态提示 |
+| 功能   | 状态 | 说明                 |
+| :--- | :- | :----------------- |
+| 进度反馈 | ✅  | 实时进度条和状态提示         |
 | 错误处理 | ✅  | URL验证、API限流提示、重试机制 |
-| 历史记录 | ✅  | 本地存储分析历史 |
-| 收藏仓库 | ✅  | 收藏功能持久化 |
+| 历史记录 | ✅  | 本地存储分析历史           |
+| 收藏仓库 | ✅  | 收藏功能持久化            |
 
 ### 架构重构（v2.0 - 已完成）
 
-| 功能     | 状态 | 说明                    |
-| :----- | :- | :-------------------- |
-| 前后端分离 | ✅  | Vue 3 + FastAPI |
-| WebSocket | ✅  | 实时进度推送 |
-| 任务取消 | ✅  | 可靠的取消功能 |
+| 功能        | 状态 | 说明              |
+| :-------- | :- | :-------------- |
+| 前后端分离     | ✅  | Vue 3 + FastAPI |
+| WebSocket | ✅  | 实时进度推送          |
+| 任务取消      | ✅  | 可靠的取消功能         |
 
 ### 功能增强（v2.1 - 已完成）
 
-| 功能     | 状态 | 说明                    |
-| :----- | :- | :-------------------- |
+| 功能   | 状态 | 说明                |
+| :--- | :- | :---------------- |
 | 导出功能 | ✅  | Markdown、PDF、HTML |
-| 代码图谱 | ✅  | 目录树可视化 |
-| 深色模式 | ✅  | 主题切换 |
-| 多语言 | ✅  | 中英文支持 |
+| 深色模式 | ✅  | 主题切换              |
+| 多语言  | ✅  | 中英文支持             |
+
+### 数据持久化（v2.2 - 已完成）
+
+| 功能      | 状态 | 说明                  |
+| :------ | :- | :------------------ |
+| 数据库集成   | ✅  | SQLite + SQLAlchemy |
+| AI问答持久化 | ✅  | 问答记录保存到数据库          |
+| 仓库文档持久化 | ✅  | 分析结果自动保存            |
+| 数据导出导入  | ✅  | JSON格式数据备份恢复        |
+| 收藏功能迁移  | ✅  | 从JSON迁移到数据库         |
 
 ***
 
-## 迭代三：数据持久化（v3.0 - 计划中）
+## 迭代四：Multi-Agent架构升级（v3.0 - 计划中）
 
-**优先级**：高  
-**预计工作量**：5 天  
-**目标**：实现数据持久化，支持AI问答记录和仓库文档的长期存储
-
-### 步骤 3.1：数据库集成
-
-**任务**：
-
-1. 引入 SQLAlchemy ORM
-2. 设计数据库模型（repositories, chat_messages, favorites, analysis_history）
-3. 实现数据库连接和会话管理
-4. 配置 Alembic 数据库迁移
-
-**实现方案**：
-
-```python
-# backend/models/database.py
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
-from sqlalchemy.orm import relationship, declarative_base
-from datetime import datetime
-
-Base = declarative_base()
-
-class Repository(Base):
-    __tablename__ = "repositories"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    url = Column(String(500), unique=True, nullable=False)
-    name = Column(String(200))
-    description = Column(Text)
-    language = Column(String(50))
-    stars = Column(Integer, default=0)
-    learning_doc = Column(Text)
-    setup_guide = Column(Text)
-    analysis_result = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    chat_messages = relationship("ChatMessage", back_populates="repository")
-    favorites = relationship("Favorite", back_populates="repository")
-
-class ChatMessage(Base):
-    __tablename__ = "chat_messages"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    repo_id = Column(Integer, ForeignKey("repositories.id"))
-    role = Column(String(20), nullable=False)
-    content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    repository = relationship("Repository", back_populates="chat_messages")
-```
-
-**验证方法**：
-
-- [ ] 数据库表创建成功
-- [ ] CRUD 操作正常
-- [ ] 数据迁移脚本可执行
-
-***
-
-### 步骤 3.2：AI问答记录持久化
-
-**任务**：
-
-1. 实现问答记录保存到数据库
-2. 实现问答记录查询（按仓库ID）
-3. 实现问答记录删除功能
-4. 切换仓库时清空当前问答记录
-
-**实现方案**：
-
-```python
-# backend/database/crud.py
-from sqlalchemy.orm import Session
-from backend.models.database import Repository, ChatMessage
-
-class ChatMessageCRUD:
-    def create_message(self, db: Session, repo_id: int, role: str, content: str) -> ChatMessage:
-        db_message = ChatMessage(
-            repo_id=repo_id,
-            role=role,
-            content=content
-        )
-        db.add(db_message)
-        db.commit()
-        db.refresh(db_message)
-        return db_message
-    
-    def get_messages_by_repo(self, db: Session, repo_id: int) -> list:
-        return db.query(ChatMessage).filter(
-            ChatMessage.repo_id == repo_id
-        ).order_by(ChatMessage.created_at).all()
-    
-    def delete_messages_by_repo(self, db: Session, repo_id: int) -> int:
-        deleted = db.query(ChatMessage).filter(
-            ChatMessage.repo_id == repo_id
-        ).delete()
-        db.commit()
-        return deleted
-```
-
-**验证方法**：
-
-- [ ] 用户提问自动保存到数据库
-- [ ] 切换仓库时问答记录正确处理
-- [ ] 删除功能正常工作
-
-***
-
-### 步骤 3.3：仓库文档持久化
-
-**任务**：
-
-1. 分析完成后自动保存文档到数据库
-2. 重新分析时更新已有文档
-3. 支持离线查看已分析仓库
-4. 实现文档删除功能
-
-**实现方案**：
-
-```python
-# backend/database/crud.py
-class RepositoryCRUD:
-    def create_repository(self, db: Session, repo_data: dict) -> Repository:
-        db_repo = Repository(**repo_data)
-        db.add(db_repo)
-        db.commit()
-        db.refresh(db_repo)
-        return db_repo
-    
-    def get_by_url(self, db: Session, url: str) -> Repository:
-        return db.query(Repository).filter(Repository.url == url).first()
-    
-    def update_repository(self, db: Session, url: str, update_data: dict) -> Repository:
-        db_repo = self.get_by_url(db, url)
-        if db_repo:
-            for key, value in update_data.items():
-                setattr(db_repo, key, value)
-            db.commit()
-            db.refresh(db_repo)
-        return db_repo
-    
-    def get_all_repositories(self, db: Session) -> list:
-        return db.query(Repository).order_by(Repository.updated_at.desc()).all()
-```
-
-**验证方法**：
-
-- [ ] 分析完成后文档自动保存
-- [ ] 重新分析时文档正确更新
-- [ ] 离线查看功能正常
-
-***
-
-### 步骤 3.4：代码图谱可视化
-
-**任务**：
-
-1. 实现目录树可视化组件
-2. 实现文件统计展示（文件类型分布、代码行数统计）
-3. 实现依赖关系展示（import关系、模块依赖）
-4. 创建代码图谱标签页
-
-**实现方案**：
-
-```python
-# backend/services/code_graph.py
-from collections import defaultdict
-from pathlib import Path
-import os
-
-class CodeGraphService:
-    def analyze_structure(self, repo_path: str) -> dict:
-        result = {
-            "tree": self._build_tree(repo_path),
-            "stats": self._get_file_stats(repo_path),
-            "dependencies": self._analyze_dependencies(repo_path)
-        }
-        return result
-    
-    def _build_tree(self, repo_path: str, max_depth: int = 3) -> dict:
-        tree = {"name": os.path.basename(repo_path), "children": []}
-        self._traverse(Path(repo_path), tree, 0, max_depth)
-        return tree
-    
-    def _get_file_stats(self, repo_path: str) -> dict:
-        stats = defaultdict(lambda: {"count": 0, "lines": 0})
-        for root, dirs, files in os.walk(repo_path):
-            for file in files:
-                ext = Path(file).suffix or "other"
-                file_path = os.path.join(root, file)
-                try:
-                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        lines = len(f.readlines())
-                    stats[ext]["count"] += 1
-                    stats[ext]["lines"] += lines
-                except:
-                    pass
-        return dict(stats)
-    
-    def _analyze_dependencies(self, repo_path: str) -> dict:
-        dependencies = {"imports": [], "modules": []}
-        return dependencies
-```
-
-**验证方法**：
-
-- [ ] 目录树正确显示
-- [ ] 文件统计准确
-- [ ] 依赖关系正确展示
-
-***
-
-### 步骤 3.5：数据导出导入
-
-**任务**：
-
-1. 实现用户数据导出（JSON格式）
-2. 实现数据导入功能
-3. 实现数据备份恢复
-
-**验证方法**：
-
-- [ ] 导出功能正常
-- [ ] 导入功能正常
-- [ ] 数据完整性验证
-
-***
-
-## 迭代四：Multi-Agent架构升级（v3.1 - 计划中）
-
-**优先级**：高  
-**预计工作量**：7 天  
-**目标**：升级多Agent架构，实现并行处理和质量控制
+**优先级**：高\
+**预计工作量**：7 天\
+**目标**：升级 Multi-Agent 架构，实现并行处理，提高分析效率
 
 ### 步骤 4.1：SOP标准化流程定义
 
 **任务**：
 
-1. 定义标准化的分析流程
+1. 定义标准化的分析流程（Planning → Analysis → Generation → Review → Output）
 2. 创建 SOP 配置文件
 3. 实现流程状态机
 
@@ -316,14 +88,14 @@ class CodeGraphService:
 # core/sop.py
 GITGUIDE_SOP = {
     "name": "GitHub Repository Analysis",
-    "version": "3.0",
+    "version": "3.1",
     "stages": [
         {
             "id": "planning",
             "name": "任务规划",
             "agent": "PlannerAgent",
             "timeout": 30,
-            "next": "analysis"
+            "outputs": ["task_list", "priority_order"]
         },
         {
             "id": "analysis",
@@ -334,31 +106,23 @@ GITGUIDE_SOP = {
                 {"id": "structure_analysis", "agent": "StructureAnalyzer"},
                 {"id": "dependency_analysis", "agent": "DependencyAnalyzer"}
             ],
-            "next": "generation"
+            "timeout": 120
         },
         {
             "id": "generation",
             "name": "文档生成",
             "parallel": True,
             "sub_tasks": [
-                {"id": "readme_generation", "agent": "ReadmeGenerator"},
-                {"id": "learning_doc_generation", "agent": "LearningDocGenerator"},
-                {"id": "setup_guide_generation", "agent": "SetupGuideGenerator"}
+                {"id": "learning_doc", "agent": "LearningDocGenerator"},
+                {"id": "setup_guide", "agent": "SetupGuideGenerator"}
             ],
-            "next": "review"
+            "timeout": 180
         },
         {
             "id": "review",
             "name": "质量审核",
             "agent": "ReviewerAgent",
-            "next": "optimization"
-        },
-        {
-            "id": "optimization",
-            "name": "迭代优化",
-            "agent": "OptimizerAgent",
-            "max_iterations": 3,
-            "next": "finalization"
+            "outputs": ["quality_score", "issues"]
         }
     ]
 }
@@ -368,17 +132,123 @@ GITGUIDE_SOP = {
 
 - [ ] SOP 流程配置正确
 - [ ] 状态机转换正常
+- [ ] 各阶段输出符合预期
 
 ***
 
-### 步骤 4.2：并行分析处理
+### 步骤 4.2：Supervisor Agent 实现
 
 **任务**：
 
-1. 实现 Analyzer Team（TypeAnalyzer, StructureAnalyzer, DependencyAnalyzer, CodePatternAnalyzer）
-2. 实现 Generator Team（ReadmeGenerator, LearningDocGenerator, SetupGuideGenerator, VisualDocGenerator）
-3. 使用 LangGraph 构建并行工作流
-4. 实现共享上下文机制
+1. 实现 Planner（规划器）：任务分解和优先级排序
+2. 实现 Scheduler（调度器）：并行任务调度
+3. 实现 Reviewer（审核器）：文档质量审核
+4. 实现 Optimizer（优化器）：文档优化建议
+
+**实现方案**：
+
+```python
+# agents/supervisor.py
+from langgraph.graph import StateGraph, END
+
+class SupervisorAgent:
+    def __init__(self):
+        self.planner = PlannerAgent()
+        self.scheduler = SchedulerAgent()
+        self.reviewer = ReviewerAgent()
+    
+    async def run(self, context: SharedContext) -> dict:
+        # 1. 规划阶段
+        plan = await self.planner.plan(context)
+        context.set_plan(plan)
+        
+        # 2. 调度执行
+        results = await self.scheduler.execute_parallel(plan, context)
+        context.set_results(results)
+        
+        # 3. 质量审核
+        review = await self.reviewer.review(results)
+        
+        return results
+```
+
+**验证方法**：
+
+- [ ] Planner 正确分解任务
+- [ ] Scheduler 并行调度正常
+- [ ] Reviewer 质量评分准确
+
+***
+
+### 步骤 4.3：Analyzer Team 实现
+
+**任务**：
+
+1. 实现 TypeAnalyzer：项目类型识别（Python/Node/Java/Go等）
+2. 实现 StructureAnalyzer：目录结构分析、核心模块识别
+3. 实现 DependencyAnalyzer：依赖关系分析、版本兼容性检查
+
+**实现方案**：
+
+```python
+# agents/analyzers.py
+class TypeAnalyzer:
+    async def analyze(self, context: SharedContext) -> AnalysisResult:
+        repo_path = context.repo_path
+        
+        project_type = self._detect_type(repo_path)
+        frameworks = self._detect_frameworks(repo_path)
+        
+        return AnalysisResult(
+            analyzer_id="type_analyzer",
+            data={
+                "project_type": project_type,
+                "frameworks": frameworks
+            }
+        )
+
+class StructureAnalyzer:
+    async def analyze(self, context: SharedContext) -> AnalysisResult:
+        repo_path = context.repo_path
+        
+        tree = self._build_tree(repo_path)
+        core_modules = self._identify_core_modules(tree)
+        
+        return AnalysisResult(
+            analyzer_id="structure_analyzer",
+            data={
+                "tree": tree,
+                "core_modules": core_modules
+            }
+        )
+
+class DependencyAnalyzer:
+    async def analyze(self, context: SharedContext) -> AnalysisResult:
+        repo_path = context.repo_path
+        
+        dependencies = self._parse_dependencies(repo_path)
+        
+        return AnalysisResult(
+            analyzer_id="dependency_analyzer",
+            data={"dependencies": dependencies}
+        )
+```
+
+**验证方法**：
+
+- [ ] 项目类型识别准确率 > 95%
+- [ ] 目录结构分析正确
+- [ ] 依赖关系解析完整
+
+***
+
+### 步骤 4.4：并行执行引擎实现
+
+**任务**：
+
+1. 使用 LangGraph 构建工作流图
+2. 实现 asyncio + ThreadPoolExecutor 并行执行
+3. 创建共享上下文机制
 
 **实现方案**：
 
@@ -391,7 +261,7 @@ from concurrent.futures import ThreadPoolExecutor
 class ParallelExecutor:
     def __init__(self, max_workers: int = 4):
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
-        
+    
     async def execute_parallel(self, tasks: list, context: SharedContext) -> list:
         loop = asyncio.get_event_loop()
         futures = [
@@ -404,17 +274,13 @@ class ParallelExecutor:
 def build_gitguide_graph():
     graph = StateGraph(GitGuideState)
     
-    # 添加节点
     graph.add_node("planner", planner_node)
     graph.add_node("type_analyzer", type_analyzer_node)
     graph.add_node("structure_analyzer", structure_analyzer_node)
     graph.add_node("dependency_analyzer", dependency_analyzer_node)
     graph.add_node("merger", merger_node)
     graph.add_node("doc_generator", doc_generator_node)
-    graph.add_node("reviewer", reviewer_node)
-    graph.add_node("optimizer", optimizer_node)
     
-    # 设置并行边
     graph.set_entry_point("planner")
     graph.add_edge("planner", "type_analyzer")
     graph.add_edge("planner", "structure_analyzer")
@@ -425,220 +291,293 @@ def build_gitguide_graph():
 
 **验证方法**：
 
-- [ ] 并行分析任务正常执行
-- [ ] 分析时间显著减少
-- [ ] 结果正确合并
+- [ ] 并行执行正常工作
+- [ ] 分析时间显著减少（目标：减少60-80%）
+- [ ] 共享上下文正确传递
 
 ***
 
-### 步骤 4.3：质量控制机制
+### 步骤 4.5：集成测试与优化
 
 **任务**：
 
-1. 实现 Reviewer Agent（文档质量审核）
-2. 实现 Optimizer Agent（迭代优化）
-3. 定义质量检查清单
-4. 实现多轮优化循环
+1. 集成所有 Agent 组件
+2. 端到端测试
+3. 性能优化
+
+**验证方法**：
+
+- [ ] 完整流程测试通过
+- [ ] 分析时间减少 60%+
+- [ ] 并行效率 > 80%
+
+***
+
+## 迭代五：文档质量提升（v3.1 - 计划中）
+
+**优先级**：高\
+**预计工作量**：8 天\
+**目标**：基于新学习者需求，全面提升文档质量和实用性
+
+### 步骤 5.1：文档类型扩展
+
+**任务**：
+
+1. 实现快速入门文档生成器（QuickStartGenerator）
+2. 实现项目概览文档生成器（OverviewGenerator）
+3. 实现架构设计文档生成器（ArchitectureGenerator）
+4. 实现安装部署文档生成器（InstallGuideGenerator）
+5. 实现使用教程文档生成器（TutorialGenerator）
+6. 实现开发指南文档生成器（DevGuideGenerator）
+7. 实现故障排查文档生成器（TroubleshootingGenerator）
+
+**文档内容规划**：
+
+| 文档类型     | 核心内容                 |
+| :------- | :------------------- |
+| **快速入门** | 一句话概括、核心概念图解、最小化运行命令 |
+| **项目概览** | 背景、功能列表、技术选型、适用场景    |
+| **架构设计** | 架构图、模块说明、数据流、设计决策    |
+| **安装部署** | 环境要求、安装步骤、配置说明、常见问题  |
+| **使用教程** | 基础用法、进阶用法、API参考、示例代码 |
+| **开发指南** | 目录结构、代码规范、开发环境、测试指南  |
+| **故障排查** | 常见错误、调试技巧、日志说明、FAQ   |
+
+**实现方案**：
+
+````python
+# agents/generators.py
+class QuickStartGenerator:
+    TEMPLATE = """
+    # 快速入门
+    
+    ## 一句话概括
+    {one_liner}
+    
+    ## 核心概念
+    {core_concepts}
+    
+    ## 最小化运行
+    ```bash
+    {minimal_run}
+    ```
+    """
+    
+    async def generate(self, context: SharedContext) -> str:
+        analysis = context.get_analysis_results()
+        
+        return await self._generate_with_llm(
+            template=self.TEMPLATE,
+            context=analysis
+        )
+
+class ArchitectureGenerator:
+    async def generate(self, context: SharedContext) -> str:
+        analysis = context.get_analysis_results()
+        
+        architecture = await self._analyze_architecture(analysis)
+        modules = await self._identify_modules(analysis)
+        data_flow = await self._trace_data_flow(analysis)
+        
+        return self._format_architecture_doc(architecture, modules, data_flow)
+````
+
+**验证方法**：
+
+- [ ] 7种文档类型全部生成
+- [ ] 文档内容完整、准确
+- [ ] 文档格式统一
+
+***
+
+### 步骤 5.2：辅助素材生成
+
+**任务**：
+
+1. 实现架构图生成器
+2. 实现目录树可视化
+3. 实现代码图谱生成
+4. 实现示例代码提取器
 
 **实现方案**：
 
 ```python
-# agents/reviewer.py
-class ReviewerAgent:
-    QUALITY_CHECKLIST = [
-        {
-            "id": "completeness",
-            "name": "完整性检查",
-            "items": ["项目概述是否完整", "技术栈是否列出", "启动命令是否正确"]
-        },
-        {
-            "id": "accuracy",
-            "name": "准确性检查",
-            "items": ["语言识别是否正确", "框架识别是否正确", "依赖版本是否准确"]
-        },
-        {
-            "id": "readability",
-            "name": "可读性检查",
-            "items": ["结构是否清晰", "语言是否流畅", "示例是否充分"]
+# services/visual_assets.py
+class ArchitectureDiagramGenerator:
+    def generate(self, analysis_result: dict) -> dict:
+        return {
+            "type": "mermaid",
+            "content": self._build_mermaid_diagram(analysis_result)
         }
-    ]
-    
-    def review(self, documents: dict) -> ReviewResult:
-        scores = {}
-        issues = []
-        
-        for checklist in self.QUALITY_CHECKLIST:
-            category_score, category_issues = self._check_category(documents, checklist)
-            scores[checklist["id"]] = category_score
-            issues.extend(category_issues)
-        
-        overall_score = sum(scores.values()) / len(scores)
-        
-        return ReviewResult(
-            scores=scores,
-            overall_score=overall_score,
-            issues=issues,
-            passed=overall_score >= 0.8
-        )
 
-# agents/optimizer.py
-class OptimizerAgent:
-    def __init__(self, max_iterations: int = 3):
-        self.max_iterations = max_iterations
-        
-    def iterative_optimization(self, documents: dict, target_score: float = 0.9) -> tuple:
-        current_docs = documents
-        iterations = 0
-        
-        while iterations < self.max_iterations:
-            review = self.reviewer.review(current_docs)
-            
-            if review.overall_score >= target_score:
-                break
-            
-            current_docs = self.optimize(current_docs, review)
-            iterations += 1
-        
-        return current_docs, review.overall_score, iterations
+class DirectoryTreeGenerator:
+    def generate(self, repo_path: str) -> dict:
+        return {
+            "tree": self._build_tree(repo_path),
+            "stats": self._get_file_stats(repo_path)
+        }
+
+class CodeGraphGenerator:
+    def generate(self, repo_path: str) -> dict:
+        return {
+            "file_types": self._analyze_file_types(repo_path),
+            "lines_of_code": self._count_lines(repo_path),
+            "dependencies": self._analyze_dependencies(repo_path)
+        }
+
+class ExampleExtractor:
+    def extract(self, repo_path: str) -> list:
+        examples = []
+        for file_path in self._find_example_files(repo_path):
+            example = self._extract_example(file_path)
+            examples.append(example)
+        return examples
 ```
 
 **验证方法**：
 
-- [ ] 质量审核正常执行
-- [ ] 迭代优化有效提升文档质量
-- [ ] 质量评分准确
+- [ ] 架构图正确生成
+- [ ] 目录树准确展示
+- [ ] 代码图谱数据准确
+- [ ] 示例代码有效提取
 
 ***
 
-### 步骤 4.4：深度代码分析
+### 步骤 5.3：质量控制机制
 
 **任务**：
 
-1. 实现函数/类关系分析
-2. 实现代码质量评分
-3. 实现潜在问题检测
-4. 实现最佳实践建议
+1. 实现质量评分系统
+2. 实现多轮审核优化机制
+3. 定义文档模板标准
+
+**质量评分维度**：
+
+| 维度  | 权重  | 评估内容                      |
+| :-- | :-- | :------------------------ |
+| 完整性 | 30% | 文档类型是否齐全、各章节是否完整、必要信息是否覆盖 |
+| 准确性 | 30% | 技术信息是否正确、命令是否可执行、配置是否有效   |
+| 可读性 | 20% | 结构是否清晰、语言是否流畅、示例是否充分      |
+| 实用性 | 20% | 是否解决实际问题、是否有可操作步骤、是否有故障排查 |
+
+**实现方案**：
+
+```python
+# agents/quality.py
+class QualityScorer:
+    DIMENSIONS = {
+        "completeness": {"weight": 0.30, "checks": [...]},
+        "accuracy": {"weight": 0.30, "checks": [...]},
+        "readability": {"weight": 0.20, "checks": [...]},
+        "practicality": {"weight": 0.20, "checks": [...]}
+    }
+    
+    async def score(self, documents: dict) -> QualityScore:
+        scores = {}
+        for dimension, config in self.DIMENSIONS.items():
+            scores[dimension] = await self._evaluate_dimension(documents, config)
+        
+        return QualityScore(
+            completeness=scores["completeness"],
+            accuracy=scores["accuracy"],
+            readability=scores["readability"],
+            practicality=scores["practicality"],
+            overall=sum(scores.values())
+        )
+
+class DocOptimizer:
+    def __init__(self, max_iterations: int = 3, target_score: float = 0.85):
+        self.max_iterations = max_iterations
+        self.target_score = target_score
+    
+    async def optimize(self, documents: dict, review: ReviewResult) -> dict:
+        iteration = 0
+        current_docs = documents
+        
+        while iteration < self.max_iterations:
+            if review.overall_score >= self.target_score:
+                break
+            
+            current_docs = await self._apply_suggestions(current_docs, review.issues)
+            review = await self.reviewer.review(current_docs)
+            iteration += 1
+        
+        return current_docs
+```
 
 **验证方法**：
 
-- [ ] 函数/类分析正确
-- [ ] 质量评分合理
-- [ ] 问题检测准确
+- [ ] 质量评分准确反映文档质量
+- [ ] 多轮优化有效提升文档质量
+- [ ] 文档模板统一规范
 
 ***
 
-### 步骤 4.5：API文档生成
+### 步骤 5.4：前端界面适配
 
 **任务**：
 
-1. 识别 REST API 端点
-2. 提取函数签名和文档字符串
-3. 生成 OpenAPI/Swagger 规范
+1. 实现多标签页文档展示
+2. 实现辅助素材展示组件
+3. 实现质量评分展示
+4. 更新数据库模型
+
+**数据库模型更新**：
+
+```sql
+-- 扩展 repositories 表
+ALTER TABLE repositories ADD COLUMN quick_start TEXT;
+ALTER TABLE repositories ADD COLUMN architecture_doc TEXT;
+ALTER TABLE repositories ADD COLUMN usage_tutorial TEXT;
+ALTER TABLE repositories ADD COLUMN dev_guide TEXT;
+ALTER TABLE repositories ADD COLUMN troubleshooting TEXT;
+ALTER TABLE repositories ADD COLUMN quality_score INTEGER DEFAULT 0;
+```
 
 **验证方法**：
 
-- [ ] API端点识别正确
-- [ ] OpenAPI规范生成正确
+- [ ] 文档标签页切换正常
+- [ ] 辅助素材正确展示
+- [ ] 质量评分显示正确
+- [ ] 数据库迁移成功
 
 ***
 
-## 迭代五：协作与分享（v3.2 - 计划中）
-
-**优先级**：中  
-**预计工作量**：3 天
-
-### 步骤 5.1：分享功能
+### 步骤 5.5：集成测试与优化
 
 **任务**：
 
-1. 生成分享链接
-2. 生成二维码
-3. 添加社交媒体分享按钮
+1. 端到端测试
+2. 文档质量评估
+3. 用户体验优化
 
 **验证方法**：
 
-- [ ] 分享链接可访问
-- [ ] 二维码可扫描
-
-***
-
-### 步骤 5.2：用户反馈系统
-
-**任务**：
-
-1. 文档质量评分
-2. AI 回答满意度反馈
-3. 问题报告功能
-
-**验证方法**：
-
-- [ ] 评分功能正常
-- [ ] 反馈数据保存
-
-***
-
-## 迭代六：技术改进（v3.3 - 计划中）
-
-**优先级**：中  
-**预计工作量**：4 天
-
-### 步骤 6.1：缓存优化
-
-**任务**：
-
-1. Redis 缓存集成
-2. 分析结果持久化
-3. 智能缓存失效
-
-**验证方法**：
-
-- [ ] 缓存命中时响应更快
-- [ ] 缓存失效逻辑正确
-
-***
-
-### 步骤 6.2：多 LLM 支持
-
-**任务**：
-
-1. 支持 Claude API
-2. 支持本地模型（Ollama）
-3. 支持更多国产模型
-
-**验证方法**：
-
-- [ ] 模型切换正常
-- [ ] 各模型回答质量
+- [ ] 完整流程测试通过
+- [ ] 文档质量评分 > 85 分
+- [ ] 用户反馈收集
 
 ***
 
 ## 实施检查清单
 
-### 迭代三检查项（v3.0）
-
-- [ ] 数据库表创建成功
-- [ ] AI问答记录持久化正常
-- [ ] 仓库文档持久化正常
-- [ ] 代码图谱可视化功能正常
-- [ ] 数据导出导入功能正常
-
-### 迭代四检查项（v3.1）
+### V3.1 检查项（Multi-Agent架构升级）
 
 - [ ] SOP流程配置正确
-- [ ] 并行分析正常执行
-- [ ] 质量审核机制有效
-- [ ] 深度代码分析功能
-- [ ] API文档生成功能
+- [ ] Supervisor Agent 正常工作
+- [ ] Analyzer Team 并行执行
+- [ ] 并行执行引擎正常
+- [ ] 分析时间减少 60%+
+- [ ] 并行效率 > 80%
 
-### 迭代五检查项（v3.2）
+### V3.2 检查项（文档质量提升）
 
-- [ ] 分享功能
-- [ ] 反馈系统
-
-### 迭代六检查项（v3.3）
-
-- [ ] 缓存优化
-- [ ] 多 LLM 支持
+- [ ] 7种文档类型全部生成
+- [ ] 辅助素材正确生成
+- [ ] 质量评分系统准确
+- [ ] 多轮优化有效
+- [ ] 前端界面适配完成
+- [ ] 文档质量评分 > 85 分
 
 ***
 

@@ -3,6 +3,7 @@
 """
 import uuid
 import asyncio
+import os
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from typing import Optional
 
@@ -10,11 +11,12 @@ from backend.models.schemas import (
     AnalyzeRequest, AnalyzeResponse, TaskStatus, HistoryItem, FavoriteItem
 )
 from backend.websocket.manager import WebSocketManager, task_store
+from backend.database.config import SessionLocal, get_db
+from backend.database.crud import FavoriteCRUD
 from core.validators import validate_github_url
 
 router = APIRouter()
 
-# 模块级别的 WebSocket 管理器（由 main.py 注入）
 ws_manager: WebSocketManager = None
 
 # 依赖：获取 WebSocket 管理器
@@ -125,31 +127,35 @@ async def clear_history():
 
 
 @router.get("/favorites")
-async def get_favorites():
+async def get_favorites(db = Depends(get_db)):
     """获取收藏列表"""
-    from core.favorites import get_favorites
-    favorites = get_favorites()
-    return [FavoriteItem(**item) for item in favorites]
+    favorites = FavoriteCRUD.get_all_with_repo(db)
+    return [FavoriteItem(
+        url=fav["url"],
+        name=fav["name"] or "",
+        description=fav["description"] or "",
+        language=fav["language"] or "",
+        stargazers_count=fav["stars"] or 0,
+        added_at=fav["created_at"] or ""
+    ) for fav in favorites]
 
 
 @router.post("/favorites")
-async def add_favorite(repo_url: str):
+async def add_favorite(repo_url: str, db = Depends(get_db)):
     """添加收藏"""
-    from core.favorites import add_favorite as add_fav
     from tools.github_tools import get_repo_info
-
+    
     repo_info = get_repo_info(repo_url)
     if isinstance(repo_info, dict) and "error" not in repo_info:
-        add_fav(repo_url, repo_info)
+        FavoriteCRUD.add_by_url(db, repo_url, repo_info)
         return {"success": True}
     return {"success": False, "error": "无法获取仓库信息"}
 
 
 @router.delete("/favorites")
-async def remove_favorite(repo_url: str):
+async def remove_favorite(repo_url: str, db = Depends(get_db)):
     """移除收藏"""
-    from core.favorites import remove_favorite
-    remove_favorite(repo_url)
+    FavoriteCRUD.remove_by_url(db, repo_url)
     return {"success": True}
 
 
@@ -256,6 +262,32 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
                 "repo_info": result.get("repo_info", {})
             })
 
+            # 保存到数据库
+            from backend.database.config import SessionLocal
+            from backend.database.crud import RepositoryCRUD
+            db = SessionLocal()
+            try:
+                repo_info = result.get("repo_info", {})
+                existing_repo = RepositoryCRUD.get_by_url(db, repo_url)
+                
+                repo_data = {
+                    "url": repo_url,
+                    "name": repo_info.get("name") or repo_info.get("full_name", ""),
+                    "description": repo_info.get("description", ""),
+                    "language": repo_info.get("language", ""),
+                    "stars": repo_info.get("stargazers_count", 0) or repo_info.get("stars", 0),
+                    "learning_doc": result.get("learning_doc", ""),
+                    "setup_guide": result.get("setup_guide", ""),
+                    "analysis_result": str(result.get("repo_info", {}))
+                }
+                
+                if existing_repo:
+                    RepositoryCRUD.update(db, repo_url, repo_data)
+                else:
+                    RepositoryCRUD.create(db, repo_data)
+            finally:
+                db.close()
+
             # 发送完成
             await ws_manager.send_progress(job_id, "completed", 100, "分析完成！")
             await ws_manager.send_result(job_id, result)
@@ -272,3 +304,22 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
         error_msg = str(e)
         task_store.set_error(job_id, error_msg)
         await ws_manager.send_error(job_id, error_msg)
+
+@router.get("/analyze/{job_id}/code-graph")
+async def get_code_graph(job_id: str):
+    """
+    获取代码图谱
+    """
+    task = task_store.get_task(job_id)
+    if not task or task.get("status") != "completed":
+        return {"error": "Job not found or not completed"}
+    
+    result = task.get("result", {})
+    repo_path = result.get("repo_path")
+    
+    if not repo_path or not os.path.exists(repo_path):
+        return {"error": "Repository not found"}
+    
+    from backend.services.code_graph import CodeGraphService
+    graph = CodeGraphService.analyze_structure(repo_path)
+    return graph

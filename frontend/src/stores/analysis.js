@@ -171,6 +171,17 @@ export const useAnalysisStore = defineStore('analysis', () => {
     repoUrl.value = ''
   }
 
+  // 设置仓库 URL
+  function setRepoUrl(url) {
+    repoUrl.value = url
+  }
+
+  // 设置结果
+  function setResult(data) {
+    result.value = data
+    status.value = 'completed'
+  }
+
   return {
     // 状态
     jobId,
@@ -189,6 +200,8 @@ export const useAnalysisStore = defineStore('analysis', () => {
     // 方法
     start,
     cancel,
-    reset
+    reset,
+    setRepoUrl,
+    setResult
   }
 })

@@ -23,9 +23,12 @@
 - **智能仓库分析** - 自动识别项目结构、技术栈和核心模块
 - **一键文档生成** - 快速生成包含项目概述、架构设计、安装指南的完整文档
 - **交互式 AI 问答** - 针对项目细节提供智能解答，支持代码解释和功能查询
+- **数据持久化** - AI 问答记录和仓库文档自动保存，支持离线查看
 - **多项目类型支持** - 兼容 Python、Node.js、Java、Go 等多种技术栈
 - **实时进度显示** - WebSocket 实时推送分析进度
 - **现代化用户界面** - 基于 Vue 3 + Element Plus 的响应式界面
+- **多语言支持** - 支持中英文界面切换
+- **深色模式** - 支持深色/浅色主题切换
 
 ## 🛠️ 技术栈
 
@@ -40,6 +43,8 @@
 | Agent 框架 | LangChain           | 1.0+          | 构建智能 Agent 系统           |
 | Agent 框架 | LangGraph           | 0.2+          | 管理 Agent 间的工作流和状态       |
 | LLM      | OpenAI API / 智谱 GLM | GPT-4 / glm-4 | 提供自然语言处理能力              |
+| 数据库     | SQLite              | 3.0+          | 数据持久化存储                 |
+| ORM      | SQLAlchemy          | 2.0+          | 数据库操作                    |
 | 仓库分析     | PyGithub            | 2.1+          | 调用 GitHub API 获取仓库信息     |
 | 仓库分析     | GitPython           | 3.1+          | 本地仓库克隆和分析               |
 
@@ -47,42 +52,39 @@
 
 ```
 GitGuide/
-├── app.py                      # Streamlit 主入口（旧版，保留兼容）
-├── pages/                      # Streamlit 页面（旧版）
-│   ├── 1_🏠_Home.py
-│   ├── 2_📚_Documentation.py
-│   └── 3_💬_Chat.py
-│
 ├── backend/                    # FastAPI 后端
 │   ├── main.py                 # FastAPI 入口
 │   ├── api/                    # API 路由
 │   │   ├── analyze.py          # 分析 API
 │   │   ├── chat.py             # 问答 API
+│   │   ├── repositories.py     # 仓库管理 API
+│   │   ├── data.py             # 数据导出导入 API
 │   │   └── health.py           # 健康检查
 │   ├── models/
+│   │   ├── database.py         # 数据库模型
 │   │   └── schemas.py          # Pydantic 数据模型
-│   ├── websocket/
-│   │   └── manager.py          # WebSocket 管理器
-│   ├── tasks.py                # RQ 任务队列（可选）
-│   └── worker.py               # RQ Worker（可选）
+│   ├── database/
+│   │   ├── config.py           # 数据库配置
+│   │   └── crud.py             # CRUD 操作
+│   ├── services/
+│   │   └── code_graph.py       # 代码图谱服务
+│   └── websocket/
+│       └── manager.py          # WebSocket 管理器
 │
 ├── frontend/                   # Vue 3 前端
 │   ├── src/
 │   │   ├── api/                # API 调用
-│   │   │   ├── analyze.js
-│   │   │   └── chat.js
 │   │   ├── views/              # 页面组件
 │   │   │   ├── Home.vue
 │   │   │   ├── Documentation.vue
-│   │   │   └── Chat.vue
+│   │   │   ├── Chat.vue
+│   │   │   └── Repositories.vue
+│   │   ├── components/         # 组件
+│   │   │   └── CodeGraph.vue
 │   │   ├── stores/             # Pinia 状态管理
-│   │   │   └── analysis.js
 │   │   ├── router/             # 路由配置
-│   │   ├── main.js
-│   │   └── App.vue
-│   ├── package.json
-│   ├── vite.config.js
-│   └── index.html
+│   │   └── i18n/               # 国际化
+│   └── package.json
 │
 ├── agents/                     # LangChain Agent
 │   ├── orchestrator.py         # 协调器 - 管理多 Agent 工作流
@@ -107,7 +109,8 @@ GitGuide/
 │   ├── product-design-document.md # 产品设计文档
 │   ├── tech-stack.md           # 技术栈说明
 │   ├── implementation-plan.md  # 实施计划
-│   └── process.md              # 项目进度跟踪
+│   ├── process.md              # 项目进度跟踪
+│   └── system-update.md        # 系统升级方案
 │
 ├── requirements.txt            # Python 依赖包
 ├── .env.example                # 环境变量示例
@@ -136,21 +139,19 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-### 3. 安装 Python 依赖
+### 3. 安装依赖
 
 ```bash
+# 安装 Python 依赖
 pip install -r requirements.txt
-```
 
-### 4. 安装前端依赖
-
-```bash
+# 安装前端依赖
 cd frontend
 npm install
 cd ..
 ```
 
-### 5. 配置环境变量
+### 4. 配置环境变量
 
 ```bash
 # 复制环境变量模板
@@ -170,17 +171,16 @@ OPENAI_MODEL=gpt-4
 # GitHub API（可选，提高速率限制）
 GITHUB_TOKEN=your_github_token
 
-# 应用配置
-APP_ENV=development
-DEBUG=true
+# 数据库配置（默认使用 SQLite）
+DATABASE_URL=sqlite:///./gitguide.db
 ```
 
-### 6. 启动应用
+### 5. 启动应用
 
 ```bash
 # 终端 1：启动后端
 cd backend
-uvicorn main:app --reload --port 8000
+python -m uvicorn main:app --reload --port 8000
 
 # 终端 2：启动前端
 cd frontend
@@ -188,16 +188,6 @@ npm run dev
 ```
 
 应用将在 <http://localhost:5173> 启动。
-
-### 旧版 Streamlit 应用（可选）
-
-如果想使用旧版 Streamlit 界面：
-
-```bash
-streamlit run app.py
-```
-
-访问 <http://localhost:8501>
 
 ## 📖 使用指南
 
@@ -207,6 +197,34 @@ streamlit run app.py
 4. **生成文档** - 点击"生成文档"按钮，系统将自动分析仓库并生成文档
 5. **查看学习文档** - 在文档页面浏览生成的项目概述、技术栈分析和启动指南
 6. **AI 智能问答** - 切换到 Chat 页面，针对项目提出问题，获取智能解答
+7. **查看已分析仓库** - 首页"已分析仓库"卡片显示历史记录，点击可查看已保存的文档
+
+## 🆕 V3.0 新功能
+
+### 数据持久化
+
+- **AI 问答记录持久化** - 问答记录自动保存到数据库，刷新页面不丢失，支持清除历史记录
+- **仓库文档持久化** - 分析结果自动保存，支持离线查看
+- **已分析仓库列表** - 首页展示已分析仓库卡片，点击可快速查看历史文档
+- **数据导出导入** - 支持导出和导入用户数据（JSON 格式）
+
+### 数据库集成
+
+- 使用 SQLite 作为默认数据库
+- SQLAlchemy ORM 支持数据库操作
+- 支持迁移到 PostgreSQL（生产环境）
+
+### 新增 API
+
+| 端点 | 方法 | 描述 |
+|:---|:---|:---|
+| `/api/repositories` | GET | 获取所有已分析仓库 |
+| `/api/repositories/{url}` | GET | 获取指定仓库详情 |
+| `/api/repositories/{url}` | DELETE | 删除指定仓库 |
+| `/api/chat/history` | GET | 获取问答历史记录 |
+| `/api/chat/history` | DELETE | 清除问答历史记录 |
+| `/api/data/export` | GET | 导出所有数据 |
+| `/api/data/import` | POST | 导入数据 |
 
 ## 📂 支持的项目类型
 
@@ -221,34 +239,35 @@ streamlit run app.py
 GitGuide 采用前后端分离架构：
 
 ```
-┌─────────────────────────────────────────────┐
-│                 Vue 3 前端 (Port 5173)              │
-│  ┌──────────┐  ┌──────────────┐  ┌────────────┐   │
-│  │   Home   │  │ Documentation│  │    Chat    │   │
-│  └────┬─────┘  └──────┬───────┘  └─────┬──────┘   │
-│       │               │                 │          │
-│       └───────────────┼─────────────────┘          │
-│                       │                            │
-│              HTTP / WebSocket                      │
-└───────────────────────┼────────────────────────────┘
-                        │
-                        ▼
-┌───────────────────────────────────────────────────────┐
-│              FastAPI 后端 (Port 8000)                │
-│  ┌─────────────┐  ┌────────────┐  ┌──────────────┐  │
-│  │ /api/analyze│  │ /api/chat  │  │ /ws/analyze  │  │
-│  └──────┬──────┘  └─────┬──────┘  └──────┬───────┘  │
-└─────────┼───────────────┼─────────────────┼──────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    Vue 3 前端 (Port 5173)                        │
+│  ┌──────────┐  ┌──────────────┐  ┌────────────┐  ┌──────────┐  │
+│  │   Home   │  │ Documentation│  │    Chat    │  │Repositories│ │
+│  └────┬─────┘  └──────┬───────┘  └─────┬──────┘  └────┬─────┘  │
+│       │               │                 │              │        │
+│       └───────────────┼─────────────────┼──────────────┘        │
+│                       │                 │                       │
+│              HTTP / WebSocket                                   │
+└───────────────────────┼─────────────────┼───────────────────────┘
+                        │                 │
+                        ▼                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    FastAPI 后端 (Port 8000)                      │
+│  ┌─────────────┐  ┌────────────┐  ┌──────────────┐             │
+│  │ /api/analyze│  │ /api/chat  │  │/api/repositories│            │
+│  └──────┬──────┘  └─────┬──────┘  └──────┬───────┘             │
+└─────────┼───────────────┼─────────────────┼──────────────────────┘
           │               │                 │
           └───────────────┼─────────────────┘
                           │
                           ▼
-┌───────────────────────────────────────────────────────┐
-│              LangChain Agents                        │
-│  ┌────────────┐  ┌────────────┐  ┌──────────────┐   │
-│  │  Analyzer  │  │  DocGen    │  │     Chat     │   │
-│  └────────────┘  └────────────┘  └──────────────┘   │
-└───────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    数据层                                        │
+│  ┌─────────────┐  ┌────────────┐  ┌──────────────┐             │
+│  │   SQLite    │  │ LangChain  │  │  GitHub API  │             │
+│  │  Database   │  │   Agents   │  │              │             │
+│  └─────────────┘  └────────────┘  └──────────────┘             │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Agent 职责说明
@@ -266,6 +285,7 @@ GitGuide 采用前后端分离架构：
 | `OPENAI_BASE_URL` | 否  | API 端点 URL（默认 OpenAI）         | `https://api.openai.com/v1` |
 | `OPENAI_MODEL`    | 否  | 模型名称（默认 gpt-4）              | `gpt-4`                 |
 | `GITHUB_TOKEN`    | 否  | GitHub Token（提高 API 限额）        | -                       |
+| `DATABASE_URL`    | 否  | 数据库连接字符串                    | `sqlite:///./gitguide.db` |
 
 ## ❓ 常见问题
 
@@ -285,30 +305,42 @@ A: 分析时间取决于仓库大小和网络速度，一般在 1-3 分钟内完
 
 A: 前端通过 HTTP API 与后端通信，分析进度通过 WebSocket 实时推送。
 
+### Q: 数据存储在哪里？
+
+A: 数据默认存储在 `backend/gitguide.db` SQLite 数据库文件中，可以通过配置 `DATABASE_URL` 切换到 PostgreSQL。
+
 ## 📅 开发路线
 
-### v2.0（开发完成）✅
+### v2.0 ✅ 已完成
 - [x] 前后端分离架构（Vue 3 + FastAPI）
 - [x] WebSocket 实时进度推送
 - [x] 可靠的任务取消功能
 - [x] 现代化响应式界面
 
-### v2.1（当前版本）✅
+### v2.1 ✅ 已完成
 - [x] 文档导出功能（Markdown、PDF、HTML）
-- [ ] 代码结构图谱可视化 (未完全实现)
 - [x] 深色模式支持
 - [x] 多语言界面支持
 
-### v3.0 核心系统改进计划 （重要）
-- [ ] 整体架构升级
-- [ ] ...
+### v2.2 ✅ 已完成
+- [x] 数据库集成（SQLite + SQLAlchemy）
+- [x] AI 问答记录持久化
+- [x] 仓库文档持久化
+- [x] 数据导出导入功能
+- [x] 已分析仓库列表页面
+- [x] 收藏功能数据库迁移
 
-### v3.1（计划中）
-- [ ] 深度代码分析与复杂度评估
-- [ ] 自动 API 文档生成
-- [ ] AI问答记录持久化
-- [ ] 已分析的仓库文档记录持久化
-- [ ] 数据库功能
+### v3.0 计划中
+- [ ] Multi-Agent 架构升级
+- [ ] SOP 标准化流程
+- [ ] 并行分析处理
+- [ ] 分析效率提升 60%+
+
+### v3.1 计划中
+- [ ] 7 种文档类型（快速入门、项目概览、架构设计、安装部署、使用教程、开发指南、故障排查）
+- [ ] 5 种辅助素材（架构图、目录树、代码图谱、示例代码、学习路径）
+- [ ] 质量控制机制
+- [ ] 文档质量评分系统
 
 ## 📄 许可证
 

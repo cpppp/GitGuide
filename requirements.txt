@@ -35,5 +35,9 @@ markdown>=3.5.2
 redis>=5.0.0
 rq>=1.16.0
 
+# 数据库 (v3.0新增)
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+
 # 前端构建 (Node.js)
 # 见 frontend/package.json

@@ -75,5 +75,7 @@ class FavoriteItem(BaseModel):
     """收藏项"""
     url: str
     name: str
+    description: Optional[str] = None
     language: Optional[str] = None
+    stargazers_count: Optional[int] = 0
     added_at: Optional[str] = None

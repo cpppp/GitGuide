@@ -11,8 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-from backend.api import analyze, chat, health
+from backend.api import analyze, chat, health, repositories, data
 from backend.websocket.manager import WebSocketManager
+from backend.database.config import init_db
 
 
 # 全局 WebSocket 管理器
@@ -23,6 +24,7 @@ ws_manager = WebSocketManager()
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时
+    init_db()
     ws_manager.cleanup()
     yield
     # 关闭时
@@ -51,6 +53,8 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api", tags=["健康检查"])
 app.include_router(analyze.router, prefix="/api", tags=["分析"])
 app.include_router(chat.router, prefix="/api", tags=["问答"])
+app.include_router(repositories.router, prefix="/api", tags=["仓库"])
+app.include_router(data.router, prefix="/api", tags=["数据"])
 
 
 # 依赖注入 - 提供全局 WebSocket 管理器

@@ -4,6 +4,9 @@
       <el-button text @click="$router.push('/')">← {{ language === 'zh' ? '返回首页' : 'Back' }}</el-button>
       <el-button text @click="$router.push('/docs')">📚 {{ language === 'zh' ? '文档' : 'Docs' }}</el-button>
       <h1 class="title">💬 {{ t('chat.title', language) }}</h1>
+      <el-button v-if="messages.length > 0" type="danger" text @click="handleClearHistory">
+        🗑️ {{ language === 'zh' ? '清除记录' : 'Clear History' }}
+      </el-button>
     </div>
 
     <div v-if="!store.result" class="empty-state">
@@ -31,7 +34,7 @@
         </div>
 
         <div
-          v-for="(msg, index) in messages"
+          v-for="(msg, index) in renderedMessages"
           :key="index"
           class="message"
           :class="msg.role"
@@ -39,9 +42,7 @@
           <div class="message-avatar">
             {{ msg.role === 'user' ? '👤' : '🤖' }}
           </div>
-          <div class="message-content">
-            {{ msg.content }}
-          </div>
+          <div class="message-content" v-html="msg.renderedContent"></div>
         </div>
 
         <div v-if="isLoading" class="message assistant">
@@ -83,14 +84,16 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAnalysisStore } from '@/stores/analysis'
 import { useSettingsStore } from '@/stores/settings'
 import { storeToRefs } from 'pinia'
-import { sendChat } from '@/api/chat'
+import { sendChat, getChatHistory, clearChatHistory } from '@/api/chat'
 import { ElMessage } from 'element-plus'
 import { t } from '@/i18n'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 const router = useRouter()
 const store = useAnalysisStore()
@@ -101,6 +104,15 @@ const inputMessage = ref('')
 const messages = ref([])
 const isLoading = ref(false)
 const messagesRef = ref(null)
+
+const renderedMessages = computed(() => {
+  return messages.value.map(msg => ({
+    ...msg,
+    renderedContent: msg.role === 'assistant' 
+      ? DOMPurify.sanitize(marked(msg.content))
+      : msg.content
+  }))
+})
 
 // 快捷问题: [中文, 英文]
 const quickQuestions = [
@@ -153,10 +165,43 @@ function scrollToBottom() {
   })
 }
 
-onMounted(() => {
+async function handleClearHistory() {
+  try {
+    const { ElMessageBox } = await import('element-plus')
+    
+    await ElMessageBox.confirm(
+      language.value === 'zh' ? '确定要清除所有对话记录吗？' : 'Are you sure to clear all chat history?',
+      language.value === 'zh' ? '确认清除' : 'Confirm Clear',
+      {
+        confirmButtonText: language.value === 'zh' ? '确定' : 'Confirm',
+        cancelButtonText: language.value === 'zh' ? '取消' : 'Cancel',
+        type: 'warning'
+      }
+    )
+    
+    await clearChatHistory(store.repoUrl)
+    messages.value = []
+    ElMessage.success(language.value === 'zh' ? '对话记录已清除' : 'Chat history cleared')
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(language.value === 'zh' ? '清除失败' : 'Clear failed')
+    }
+  }
+}
+
+onMounted(async () => {
   if (!store.result) {
     ElMessage.warning(language.value === 'zh' ? '请先分析仓库' : 'Please analyze a repo first')
     router.push('/')
+  } else {
+    try {
+      const response = await getChatHistory(store.repoUrl)
+      if (response.data.messages) {
+        messages.value = response.data.messages
+      }
+    } catch (e) {
+      console.error('Failed to load chat history:', e)
+    }
   }
 })
 </script>

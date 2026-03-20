@@ -4,4 +4,16 @@
 docs
 frontend/node_modules
 backend/__pycache__
-CHANGELOG.md
+*.db
+*.db-journal
+data
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+*.log
+memory-bank/CHANGELOG.md
+.vscode

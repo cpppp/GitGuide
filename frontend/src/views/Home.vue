@@ -73,6 +73,23 @@
       </div>
     </el-card>
 
+    <!-- 已分析仓库 -->
+    <el-card class="saved-repos-card">
+      <template #header>
+        <div class="card-header">
+          <span>{{ language === 'zh' ? '📚 已分析仓库' : '📚 Saved Repositories' }}</span>
+          <el-button text @click="$router.push('/repositories')">{{ language === 'zh' ? '查看全部' : 'View All' }}</el-button>
+        </div>
+      </template>
+      <div v-if="savedRepos.length === 0" class="empty-text">{{ language === 'zh' ? '暂无已分析的仓库' : 'No saved repositories' }}</div>
+      <div v-else>
+        <div v-for="(item, index) in savedRepos.slice(0, 5)" :key="index" class="saved-repo-item">
+          <span><strong>{{ item.name || item.url }}</strong> ({{ formatDate(item.updated_at) }})</span>
+          <el-button size="small" :disabled="store.isAnalyzing" @click="viewSavedRepo(item)">{{ language === 'zh' ? '查看' : 'View' }}</el-button>
+        </div>
+      </div>
+    </el-card>
+
     <!-- 历史记录 -->
     <el-card class="history-card">
       <template #header>
@@ -128,6 +145,7 @@ const repoUrl = ref('')
 const analysisMode = ref('fast')
 const history = ref([])
 const favorites = ref([])
+const savedRepos = ref([])
 
 // 监听分析完成事件
 function handleAnalysisCompleted(event) {
@@ -261,9 +279,47 @@ async function loadFavorites() {
   }
 }
 
+async function loadSavedRepos() {
+  try {
+    const response = await fetch('/api/repositories')
+    const data = await response.json()
+    savedRepos.value = data.repositories || []
+  } catch (e) {
+    console.error('Failed to load saved repos:', e)
+  }
+}
+
+function formatDate(dateString) {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  return date.toLocaleDateString()
+}
+
+function viewSavedRepo(item) {
+  const urlParts = item.url.replace('https://github.com/', '').split('/')
+  const fullName = urlParts.join('/')
+  
+  store.setRepoUrl(item.url)
+  store.setResult({
+    repo_url: item.url,
+    repo_info: {
+      full_name: fullName,
+      name: item.name || fullName.split('/')[1],
+      description: item.description || '',
+      language: item.language || '',
+      stargazers_count: item.stars || 0,
+      html_url: item.url
+    },
+    learning_doc: item.learning_doc,
+    setup_guide: item.setup_guide
+  })
+  router.push('/docs')
+}
+
 onMounted(() => {
   loadHistory()
   loadFavorites()
+  loadSavedRepos()
 })
 </script>
 
@@ -339,7 +395,8 @@ onMounted(() => {
 
 .example-card,
 .history-card,
-.favorites-card {
+.favorites-card,
+.saved-repos-card {
   margin-bottom: 20px;
 }
 
@@ -351,7 +408,8 @@ onMounted(() => {
 
 .example-item,
 .history-item,
-.favorite-item {
+.favorite-item,
+.saved-repo-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -361,7 +419,8 @@ onMounted(() => {
 
 .example-item:last-child,
 .history-item:last-child,
-.favorite-item:last-child {
+.favorite-item:last-child,
+.saved-repo-item:last-child {
   border-bottom: none;
 }
 
