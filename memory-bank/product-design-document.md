@@ -1,6 +1,6 @@
 # 产品设计文档：GitGuide
 
-> **文档版本**：v3.2\
+> **文档版本**：v3.0\
 > **最后更新**：2026-03-20\
 > **更新说明**：V3.1 Multi-Agent架构升级，V3.2 文档质量提升
 
@@ -469,26 +469,26 @@ CREATE TABLE favorites (
 
 ### 11.4 Agent 职责说明
 
-| Agent 类型 | 组件 | 职责 |
-|:---|:---|:---|
-| **Supervisor Agent** | Planner | 任务分解、优先级排序、生成分析大纲 |
-| | Scheduler | 并行调度、任务依赖管理、进度监控 |
-| | Reviewer | 文档完整性检查、技术准确性验证、质量评分 |
-| | Optimizer | 根据反馈优化、迭代改进（最多3轮） |
-| **Analyzer Team** | TypeAnalyzer | 项目类型识别、语言/框架/构建系统检测 |
-| | StructureAnalyzer | 目录结构分析、模块识别、入口点提取 |
-| | DependencyAnalyzer | 依赖关系分析、版本兼容性检查 |
-| | CodePatternAnalyzer | 代码模式识别、架构风格分析 |
-| **Generator Team** | QuickStartGen | 快速入门文档生成 |
-| | OverviewGen | 项目概览文档生成 |
-| | ArchitectureGen | 架构设计文档生成 |
-| | InstallGuideGen | 安装部署文档生成 |
-| | TutorialGen | 使用教程文档生成 |
-| | DevGuideGen | 开发指南文档生成 |
-| | TroubleshootGen | 故障排查文档生成 |
-| **Quality Team** | DocReviewer | 文档质量审核 |
-| | DocOptimizer | 文档优化建议 |
-| | QualityScorer | 质量评分计算 |
+| Agent 类型             | 组件                  | 职责                   |
+| :------------------- | :------------------ | :------------------- |
+| **Supervisor Agent** | Planner             | 任务分解、优先级排序、生成分析大纲    |
+| <br />               | Scheduler           | 并行调度、任务依赖管理、进度监控     |
+| <br />               | Reviewer            | 文档完整性检查、技术准确性验证、质量评分 |
+| <br />               | Optimizer           | 根据反馈优化、迭代改进（最多3轮）    |
+| **Analyzer Team**    | TypeAnalyzer        | 项目类型识别、语言/框架/构建系统检测  |
+| <br />               | StructureAnalyzer   | 目录结构分析、模块识别、入口点提取    |
+| <br />               | DependencyAnalyzer  | 依赖关系分析、版本兼容性检查       |
+| <br />               | CodePatternAnalyzer | 代码模式识别、架构风格分析        |
+| **Generator Team**   | QuickStartGen       | 快速入门文档生成             |
+| <br />               | OverviewGen         | 项目概览文档生成             |
+| <br />               | ArchitectureGen     | 架构设计文档生成             |
+| <br />               | InstallGuideGen     | 安装部署文档生成             |
+| <br />               | TutorialGen         | 使用教程文档生成             |
+| <br />               | DevGuideGen         | 开发指南文档生成             |
+| <br />               | TroubleshootGen     | 故障排查文档生成             |
+| **Quality Team**     | DocReviewer         | 文档质量审核               |
+| <br />               | DocOptimizer        | 文档优化建议               |
+| <br />               | QualityScorer       | 质量评分计算               |
 
 ***
 
