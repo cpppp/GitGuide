@@ -16,3 +16,4 @@ htmlcov/
 dist/
 *.log
 .vscode
+memory-bank/CHANGELOG.md

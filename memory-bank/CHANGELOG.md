@@ -78,20 +78,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [3.0.0] - 计划中
 
-#### Multi-Agent 架构升级
+#### Multi-Agent 架构升级（完整流水线）
 - SOP 标准化流程定义
 - Supervisor Agent（Planner、Scheduler、Reviewer、Optimizer）
-- Analyzer Team（TypeAnalyzer、StructureAnalyzer、DependencyAnalyzer）
+- Analyzer Team（TypeAnalyzer、StructureAnalyzer、DependencyAnalyzer、CodePatternAnalyzer）
+- **Generator Team 核心实现**（QuickStart、Overview、Architecture、InstallGuide）
 - 并行执行引擎
+- 端到端可工作（输入 URL → 输出 4 种文档）
 - 分析效率提升 60%+
 
 ### [3.1.0] - 计划中
 
-#### 文档质量提升
-- 7 种文档类型（快速入门、项目概览、架构设计、安装部署、使用教程、开发指南、故障排查）
+#### 文档质量提升（质量团队+扩展）
+- **Quality Team 实现**（DocReviewer、DocOptimizer、QualityScorer）
+- Generator Team 扩展（Tutorial、DevGuide、Troubleshoot）
+- 7 种文档类型全覆盖
 - 5 种辅助素材（架构图、目录树、代码图谱、示例代码、学习路径）
-- 质量控制机制
-- 文档质量评分系统
+- 质量控制机制（多轮优化）
+- 文档质量评分系统（>85分）
 
 ---
 

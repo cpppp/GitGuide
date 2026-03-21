@@ -1,9 +1,9 @@
 [
   {
-    "url": "https://github.com/python/cpython",
-    "name": "cpython",
-    "description": "The Python programming language",
+    "url": "https://github.com/hsliuping/TradingAgents-CN",
+    "name": "TradingAgents-CN",
+    "description": "基于多智能体LLM的中文金融交易框架 - TradingAgents中文增强版",
     "language": "Python",
-    "timestamp": "2026-03-20T21:58:02.120449"
+    "timestamp": "2026-03-21T09:11:45.304514"
   }
 ]
