@@ -1,5 +1,11 @@
 # 技术栈文档：GitGuide
 
+> **文档版本**：v3.2\
+> **最后更新**：2026-03-21\
+> **更新说明**：新增 AI 问答功能技术选型（方案 C：Chroma + HuggingFace 本地 Embeddings）
+
+***
+
 ## 1. 技术栈总览
 
 | 层级 | 技术选择 | 版本 |
@@ -17,6 +23,8 @@
 | **ORM** | SQLAlchemy | 2.0+ |
 | **实时通信** | WebSocket | FastAPI 内置 |
 | **缓存** | Redis | 7.0+ |
+| **向量数据库** | Chroma | - |
+| **Embedding** | HuggingFaceEmbeddings | 本地模型 |
 
 ## 2. 前端技术栈
 
@@ -123,6 +131,10 @@ langgraph>=0.2.0
 # AI
 openai>=1.57.0
 
+# RAG (方案 C - 本地 Embeddings)
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+
 # 仓库分析
 GitPython>=3.1.41
 PyGithub>=2.1.1
@@ -161,6 +173,8 @@ streamlit-extras>=0.4.0
 | langchain-openai | OpenAI 集成 |
 | langgraph | 工作流图 |
 | openai | LLM API |
+| chromadb | 向量数据库 |
+| sentence-transformers | 本地 Embedding 模型 |
 | GitPython | Git 操作 |
 | PyGithub | GitHub API |
 | pydantic | 数据验证 |
@@ -296,16 +310,80 @@ streamlit-extras>=0.4.0
 - Claude API：代码能力接近，LangChain 同样支持
 - 开源模型（Ollama + LLaMA/Qwen）：本地部署，隐私性好
 
-## 8. 仓库分析
+## 8. AI 问答技术栈（方案 C）
 
-### 8.1 GitPython + GitHub API
+### 8.1 技术选型
+
+| 组件 | 技术 | 说明 |
+|:---|:---|:---|
+| **向量数据库** | Chroma | 轻量级本地存储，无需额外服务 |
+| **Embedding** | HuggingFaceEmbeddings | 本地模型，零 API 成本 |
+| **模型选择** | sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 | 多语言支持，中文友好 |
+| **对话管理** | ConversationBufferMemory | 多轮对话历史管理 |
+| **检索策略** | MMR | 最大边际相关性，提高检索多样性 |
+
+### 8.2 方案优势
+
+| 优势 | 说明 |
+|:---|:---|
+| **零 API 成本** | 无需 OpenAI Embeddings，本地运行 |
+| **数据隐私** | 所有向量化在本地完成，无需上传数据 |
+| **响应更快** | 无网络延迟，本地计算 |
+| **中文支持** | 多语言模型，中英文效果均衡 |
+| **部署简单** | 无需额外向量数据库服务 |
+
+### 8.3 Chat Agent 架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Chat Agent 架构                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              第一阶段：基础问答（无 RAG）              │    │
+│  │                                                       │    │
+│  │  用户问题 ──► GitHub 工具 ──► 文档检索 ──► LLM 回答    │    │
+│  │                                                       │    │
+│  │  特点：直接利用现有工具和文档，快速实现                │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                           │                                  │
+│                           ▼                                  │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              第二阶段：RAG 增强（方案 C）              │    │
+│  │                                                       │    │
+│  │  知识库构建：                                         │    │
+│  │  分析结果 + 仓库文件 ──► HuggingFaceEmbeddings        │    │
+│  │                          │                            │    │
+│  │                          ▼                            │    │
+│  │                    Chroma VectorStore                 │    │
+│  │                                                       │    │
+│  │  问答流程：                                           │    │
+│  │  用户问题 ──► 向量检索 ──► 上下文构建 ──► LLM 回答    │    │
+│  │                                                       │    │
+│  │  特点：精准检索，支持多轮对话，零 API 成本            │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 8.4 Embedding 模型对比
+
+| 模型 | 维度 | 语言支持 | 速度 | 适用场景 |
+|:---|:---|:---|:---|:---|
+| paraphrase-multilingual-MiniLM-L12-v2 | 384 | 多语言 | 快 | 通用场景，中文友好 |
+| all-MiniLM-L6-v2 | 384 | 英文 | 最快 | 纯英文项目 |
+| paraphrase-multilingual-mpnet-base-v2 | 768 | 多语言 | 中 | 高精度需求 |
+
+## 9. 仓库分析
+
+### 9.1 GitPython + GitHub API
 
 **选择理由：**
 - **GitPython**：纯 Python 实现，无需依赖系统 git
 - **GitHub API**：官方 API，稳定可靠
 - **LangChain Tool 封装**：可作为 Agent 工具使用
 
-### 8.2 工具模块
+### 9.2 工具模块
 
 ```
 tools/
@@ -326,9 +404,9 @@ tools/
     - get_file_extension()   # 获取文件扩展名
 ```
 
-## 9. 环境变量配置
+## 10. 环境变量配置
 
-### 9.1 .env 配置
+### 10.1 .env 配置
 
 ```env
 # OpenAI API
@@ -357,9 +435,13 @@ REDIS_URL=redis://localhost:6379/0
 APP_ENV=development
 DEBUG=true
 SECRET_KEY=your_secret_key_here
+
+# Embedding 模型配置（方案 C）
+EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+CHROMA_PERSIST_DIR=./chroma_db
 ```
 
-## 10. 技术风险与应对
+## 11. 技术风险与应对
 
 | 风险 | 影响 | 应对方案 |
 |------|------|----------|
@@ -369,10 +451,11 @@ SECRET_KEY=your_secret_key_here
 | 数据库性能瓶颈 | 查询变慢 | 添加索引、使用连接池、考虑分库分表 |
 | Agent 输出不稳定 | 文档质量波动 | 使用 structured output、添加校验逻辑 |
 | 并发问题 | 数据不一致 | 使用数据库事务、乐观锁 |
+| Embedding 模型加载慢 | 首次响应慢 | 模型预加载、缓存机制 |
 
-## 11. 部署方案
+## 12. 部署方案
 
-### 11.1 开发环境
+### 12.1 开发环境
 
 ```bash
 # 后端
@@ -383,7 +466,7 @@ cd backend && uvicorn main:app --reload --port 8000
 cd frontend && npm install && npm run dev
 ```
 
-### 11.2 生产环境
+### 12.2 生产环境
 
 **Railway / 容器化部署：**
 
@@ -397,7 +480,7 @@ cd frontend && npm install && npm run dev
   - 易于扩展和迁移
   - 支持 Kubernetes 编排
 
-## 12. 技术栈优势总结
+## 13. 技术栈优势总结
 
 ### 当前版本优势
 
@@ -407,6 +490,7 @@ cd frontend && npm install && npm run dev
 4. **实时通信**：WebSocket 实现真正的实时进度反馈
 5. **多语言支持**：中英文切换，国际化友好
 6. **主题切换**：浅色/深色主题，用户体验好
+7. **零成本 Embedding**：本地模型，无需 API 费用
 
 ### 可扩展性
 
@@ -414,7 +498,8 @@ cd frontend && npm install && npm run dev
 2. **插件化工具**：易于添加新的分析工具
 3. **多 LLM 支持**：可切换不同的 LLM 提供商
 4. **数据库迁移**：Alembic 支持平滑升级
+5. **向量存储可替换**：Chroma 可替换为 Pinecone、Weaviate 等
 
 ---
 
-*Last updated: 2026-03-20*
+*Last updated: 2026-03-21*
