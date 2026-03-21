@@ -6,16 +6,36 @@ Base = declarative_base()
 
 class Repository(Base):
     __tablename__ = "repositories"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     url = Column(String(500), unique=True, nullable=False)
     name = Column(String(200))
     description = Column(Text)
     language = Column(String(50))
     stars = Column(Integer, default=0)
+
+    # V3.0 文档
+    quick_start = Column(Text)
+    overview_doc = Column(Text)
+    architecture_doc = Column(Text)
+    install_guide = Column(Text)
+
+    # V3.1 文档
+    usage_tutorial = Column(Text)
+    dev_guide = Column(Text)
+    troubleshooting = Column(Text)
+
+    # V3.1 代码图谱数据
+    code_graph = Column(Text)  # JSON格式存储代码图谱
+    examples = Column(Text)    # JSON格式存储示例代码
+
+    # V2.x 旧字段（兼容）
     learning_doc = Column(Text)
     setup_guide = Column(Text)
+
     analysis_result = Column(Text)
+    quality_score = Column(Integer, default=0)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

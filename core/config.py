@@ -21,30 +21,22 @@ class Config:
 # 初始化 LLM 客户端
 def get_llm():
     try:
-        # 支持自定义 API URL（如智谱 GLM）
         llm_params = {
             "model": Config.OPENAI_MODEL,
             "api_key": Config.OPENAI_API_KEY,
             "temperature": 0.3
         }
 
-        # 如果配置了自定义 base_url，添加进去
         if Config.OPENAI_BASE_URL:
             llm_params["base_url"] = Config.OPENAI_BASE_URL
 
         return ChatOpenAI(**llm_params)
     except Exception as e:
-        # 降级处理
-        print(f"Error initializing LLM: {e}")
-        # 尝试使用默认的 GPT-3.5-turbo
-        try:
-            return ChatOpenAI(
-                model="glm-4.7",
-                api_key=Config.OPENAI_API_KEY,
-                temperature=0.3
-            )
-        except:
-            return None
+        print(f"Error initializing LLM with primary config: {e}")
+        return None
 
 # 全局 LLM 实例
 llm = get_llm()
+
+# 全局配置实例（供其他模块使用）
+settings = Config()

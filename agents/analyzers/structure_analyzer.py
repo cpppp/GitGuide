@@ -5,6 +5,7 @@
 
 from typing import Dict, List, Any
 import os
+import json
 
 
 class StructureAnalyzer:

@@ -4,40 +4,28 @@
 """
 
 from typing import Dict, Any, List
+from agents.generators.base_generator import BaseGenerator
 
 
-class InstallGuideGenerator:
-    """安装部署文档生成器"""
+class InstallGuideGenerator(BaseGenerator):
+    """安装部署文档生成器 - 基于LLM生成高质量文档"""
 
     def __init__(self):
-        self.name = "InstallGuideGenerator"
-        self.version = "1.0"
+        super().__init__("InstallGuideGenerator", "install_guide")
 
     def generate(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        生成安装部署文档
-
-        参数:
-            context: 包含分析结果、仓库信息等
-
-        返回:
-            Dict: 包含生成的文档和质量信息
-        """
+        """生成安装部署文档"""
         repo_url = context.get("repo_url", "")
-        analysis = context.get("analysis_results", {})
-        analysis_results = analysis.get("analysis_results", analysis)
+        repo_path = context.get("repo_path", "")
+        analysis_results = context.get("analysis_results", {})
 
         try:
-            # 从分析结果中提取信息
-            type_result = analysis_results.get("type_result", {})
-            dependency_result = analysis_results.get("dependency_result", {})
-
-            # 构建文档内容
-            content = self._build_install_guide_content(
-                repo_url,
-                type_result,
-                dependency_result
-            )
+            gen_context = self._get_shared_context(context)
+            
+            content = self.generate_with_llm(gen_context, repo_path, analysis_results)
+            
+            if not content:
+                content = self.generate_fallback(gen_context, repo_path, analysis_results)
 
             return {
                 "success": True,
@@ -45,7 +33,8 @@ class InstallGuideGenerator:
                 "content": content,
                 "metadata": {
                     "repo_url": repo_url,
-                    "generated_at": self._get_timestamp()
+                    "generated_at": self._get_timestamp(),
+                    "used_llm": self.llm is not None
                 }
             }
 
@@ -56,170 +45,185 @@ class InstallGuideGenerator:
                 "document_type": "install_guide"
             }
 
-    def _build_install_guide_content(
-        self,
-        repo_url: str,
-        type_result: Dict[str, Any],
-        dependency_result: Dict[str, Any]
-    ) -> str:
-        """构建安装部署文档内容"""
+    def generate_with_llm(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
+        """使用LLM生成安装部署文档"""
+        
+        prompt = f"""你是一个技术文档专家。请根据以下项目信息，生成一份高质量的安装部署文档。
+
+## 项目信息
+- 语言: {context.get('language', 'Unknown')}
+- 项目类型: {context.get('project_type', 'Unknown')}
+- 框架: {', '.join(context.get('frameworks', [])) or '无'}
+- 构建系统: {context.get('build_system', 'Unknown')}
+- 包管理器: {context.get('package_manager', 'Unknown')}
+
+## 目录结构
+```
+{context.get('directory_tree', '无')}
+```
+
+## README 内容
+{context.get('readme', '无README')[:2000]}
+
+## 主要依赖
+{chr(10).join(context.get('requirements', [])[:20]) or '无'}
+
+## 主要源文件
+{self._format_main_files(context.get('main_files', []))}
+
+---
+
+请生成一份安装部署文档，包含以下内容：
+1. **环境要求** - 必需的软件和版本
+2. **安装步骤** - 详细的安装命令，区分不同操作系统
+3. **配置说明** - 环境变量、配置文件等
+4. **运行命令** - 开发模式和生产模式的运行方法
+5. **常见问题** - 安装和运行过程中可能遇到的问题及解决方案
+
+要求：
+- 使用Markdown格式
+- 代码块要指定语言（bash, python等）
+- 命令要可以直接复制执行
+- 内容要具体、准确，基于实际项目信息
+"""
+
+        return self._call_llm(prompt)
+
+    def generate_fallback(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
+        """降级生成 - 当LLM不可用时使用模板"""
         lines = []
 
-        # 标题
         lines.append("# 安装部署指南")
         lines.append("")
 
-        # 环境要求
         lines.append("## 环境要求")
-        requirements = self._generate_requirements(type_result)
+        requirements = self._generate_requirements(context)
         lines.extend(requirements)
         lines.append("")
 
-        # 安装步骤
         lines.append("## 安装步骤")
-        install_steps = self._generate_install_steps(type_result, dependency_result)
+        install_steps = self._generate_install_steps(context)
         lines.extend(install_steps)
         lines.append("")
 
-        # 配置说明
         lines.append("## 配置说明")
-        configuration = self._generate_configuration(type_result, dependency_result)
+        configuration = self._generate_configuration(context)
         lines.extend(configuration)
         lines.append("")
 
-        # 运行命令
         lines.append("## 运行命令")
-        run_commands = self._generate_run_commands(type_result)
+        run_commands = self._generate_run_commands(context)
         lines.extend(run_commands)
-        lines.append("")
-
-        # 常见问题
-        lines.append("## 常见问题")
-        common_issues = self._generate_common_issues(type_result, dependency_result)
-        lines.extend(common_issues)
 
         return "\n".join(lines)
 
-    def _generate_requirements(self, type_result: Dict[str, Any]) -> List[str]:
+    def _format_main_files(self, main_files: List[Dict[str, str]]) -> str:
+        """格式化主要源文件"""
+        if not main_files:
+            return "无"
+        
+        result = []
+        for f in main_files[:2]:
+            result.append(f"### {f['name']}")
+            result.append(f"```")
+            result.append(f['content'][:400])
+            result.append("```")
+        return '\n'.join(result)
+
+    def _generate_requirements(self, context: Dict[str, Any]) -> List[str]:
         """生成环境要求说明"""
         requirements = []
-
-        language = type_result.get("language", "Unknown")
-        framework = type_result.get("frameworks", [])
-
-        requirements.append(f"- **编程语言**: {language}")
-        requirements.append(f"- **框架**: {', '.join(framework) if framework else 'None'}")
+        language = context.get("language", "Unknown")
+        frameworks = context.get("frameworks", [])
 
         if language == "Python":
-            requirements.append("- **Python 版本**: Python 3.8+")
-            requirements.append("- **推荐工具**: pip, virtualenv/conda")
+            requirements.append("- Python 3.8+")
+            requirements.append("- pip (Python 包管理器)")
+            if frameworks:
+                requirements.append(f"- 主要框架: {frameworks[0]}")
         elif language in ["JavaScript", "TypeScript"]:
-            requirements.append("- **Node.js 版本**: Node.js 16+")
-            requirements.append("- **推荐工具**: npm/yarn/pnpm")
+            requirements.append("- Node.js 16+")
+            requirements.append("- npm 或 yarn")
+            if frameworks:
+                requirements.append(f"- 主要框架: {frameworks[0]}")
+        else:
+            requirements.append(f"- {language} 运行环境")
 
         return requirements
 
-    def _generate_install_steps(self, type_result: Dict[str, Any], dependency_result: Dict[str, Any]) -> List[str]:
+    def _generate_install_steps(self, context: Dict[str, Any]) -> List[str]:
         """生成安装步骤"""
         steps = []
-
-        language = type_result.get("language", "Unknown")
+        language = context.get("language", "Unknown")
+        package_manager = context.get("package_manager", "")
 
         steps.append("### 1. 克隆仓库")
         steps.append("```bash")
-        steps.append("git clone <your-repo-url>")
-        steps.append("cd <your-repo-name>")
+        steps.append("git clone <repository-url>")
+        steps.append("cd <project-directory>")
         steps.append("```")
         steps.append("")
 
         if language == "Python":
             steps.append("### 2. 创建虚拟环境")
             steps.append("```bash")
-            steps.append("# 使用 virtualenv")
             steps.append("python -m venv venv")
-            steps.append("source venv/bin/activate")
-            steps.append("")
-            steps.append("# 或使用 conda")
-            steps.append("conda create -n myenv python=3.9")
-            steps.append("conda activate myenv")
+            steps.append("source venv/bin/activate  # Linux/Mac")
+            steps.append("# venv\\Scripts\\activate  # Windows")
             steps.append("```")
             steps.append("")
             steps.append("### 3. 安装依赖")
             steps.append("```bash")
             steps.append("pip install -r requirements.txt")
-            steps.append("# 或者如果使用 poetry")
-            steps.append("poetry install")
             steps.append("```")
         elif language in ["JavaScript", "TypeScript"]:
             steps.append("### 2. 安装依赖")
             steps.append("```bash")
-            steps.append("npm install")
-            steps.append("# 或者使用 yarn")
-            steps.append("yarn install")
+            if package_manager == "yarn":
+                steps.append("yarn install")
+            else:
+                steps.append("npm install")
             steps.append("```")
 
         return steps
 
-    def _generate_configuration(self, type_result: Dict[str, Any], dependency_result: Dict[str, Any]) -> List[str]:
+    def _generate_configuration(self, context: Dict[str, Any]) -> List[str]:
         """生成配置说明"""
         configuration = []
+        language = context.get("language", "")
 
-        language = type_result.get("language", "Unknown")
-
-        if language == "Python":
-            configuration.append("### 环境变量配置")
-            configuration.append("```bash")
-            configuration.append("# 复制示例配置文件")
-            configuration.append("cp .env.example .env")
-            configuration.append("")
-            configuration.append("# 编辑配置文件")
-            configuration.append("nano .env  # 或使用你喜欢的编辑器")
-            configuration.append("```")
-            configuration.append("")
-            configuration.append("### 数据库配置（如需要）")
-            configuration.append("- 确保数据库服务已启动")
-            configuration.append("- 在 `.env` 文件中配置数据库连接信息")
-        elif language in ["JavaScript", "TypeScript"]:
-            configuration.append("### 环境变量配置")
-            configuration.append("```bash")
-            configuration.append("# 复制示例配置文件")
-            configuration.append("cp .env.example .env")
-            configuration.append("")
-            configuration.append("# 编辑配置文件")
-            configuration.append("nano .env")
-            configuration.append("```")
+        configuration.append("### 环境变量")
+        configuration.append("```bash")
+        configuration.append("cp .env.example .env")
+        configuration.append("# 编辑 .env 文件配置必要的环境变量")
+        configuration.append("```")
 
         return configuration
 
-    def _generate_run_commands(self, type_result: Dict[str, Any]) -> List[str]:
+    def _generate_run_commands(self, context: Dict[str, Any]) -> List[str]:
         """生成运行命令"""
         commands = []
+        language = context.get("language", "")
+        main_files = context.get("main_files", [])
 
-        language = type_result.get("language", "Unknown")
-
-        commands.append("### 开发模式运行")
+        commands.append("### 开发模式")
         if language == "Python":
             commands.append("```bash")
-            commands.append("# 查找入口文件")
-            commands.append("ls *.py  # 列出所有 Python 文件")
-            commands.append("")
-            commands.append("# 运行应用")
-            commands.append("python main.py  # 或 python app.py 或 python manage.py runserver")
+            if main_files:
+                commands.append(f"python {main_files[0]['name']}")
+            else:
+                commands.append("python main.py")
             commands.append("```")
         elif language in ["JavaScript", "TypeScript"]:
             commands.append("```bash")
-            commands.append("# 开发模式")
             commands.append("npm run dev")
-            commands.append("")
-            commands.append("# 生产模式")
-            commands.append("npm run build && npm start")
             commands.append("```")
 
         commands.append("")
         commands.append("### 运行测试")
         if language == "Python":
             commands.append("```bash")
-            commands.append("pytest tests/")
+            commands.append("pytest")
             commands.append("```")
         elif language in ["JavaScript", "TypeScript"]:
             commands.append("```bash")
@@ -227,42 +231,6 @@ class InstallGuideGenerator:
             commands.append("```")
 
         return commands
-
-    def _generate_common_issues(self, type_result: Dict[str, Any], dependency_result: Dict[str, Any]) -> List[str]:
-        """生成常见问题说明"""
-        issues = []
-
-        language = type_result.get("language", "Unknown")
-
-        issues.append("### 常见问题及解决方案")
-
-        if language == "Python":
-            issues.append("**问题1**: 模块导入错误")
-            issues.append("```")
-            issues.append("ModuleNotFoundError: No module named 'xxx'")
-            issues.append("```")
-            issues.append("")
-            issues.append("**解决方案**:")
-            issues.append("- 检查虚拟环境是否已激活")
-            issues.append("- 运行 `pip list` 确认依赖已安装")
-            issues.append("- 检查 Python 版本是否兼容")
-            issues.append("")
-            issues.append("**问题2**: 数据库连接失败")
-            issues.append("- 检查数据库服务是否运行")
-            issues.append("- 检查 `.env` 文件中的数据库配置")
-            issues.append("- 检查数据库用户名和密码是否正确")
-        elif language in ["JavaScript", "TypeScript"]:
-            issues.append("**问题1**: npm install 失败")
-            issues.append("- 删除 node_modules 目录后重试: `rm -rf node_modules`")
-            issues.append("- 清理 npm 缓存: `npm cache clean --force`")
-            issues.append("- 使用淘宝镜像加速: `npm config set registry https://registry.npmmirror.com`")
-            issues.append("")
-            issues.append("**问题2**: 端口被占用")
-            issues.append("- 检查端口是否被其他程序占用")
-            issues.append("- 修改 `.env` 文件中的端口配置")
-            issues.append("- 使用 `lsof -i :端口号` 查看端口占用情况")
-
-        return issues
 
     def _get_timestamp(self) -> str:
         """获取当前时间戳"""

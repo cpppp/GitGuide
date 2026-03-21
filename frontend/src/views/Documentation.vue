@@ -31,16 +31,34 @@
         </div>
       </el-card>
 
-      <!-- 文档标签页 -->
+      <!-- 文档标签页 - V3.1 支持7种文档 -->
       <el-tabs v-model="activeTab" class="doc-tabs">
-        <el-tab-pane :label="language === 'zh' ? '学习文档' : 'Learning Docs'" name="learning">
-          <div class="markdown-content" v-html="renderMarkdown(store.result?.learning_doc || '')"></div>
+        <el-tab-pane :label="language === 'zh' ? '快速入门' : 'Quick Start'" name="quick_start">
+          <div class="markdown-content" v-html="renderMarkdown(store.result?.quick_start || store.result?.learning_doc || '')"></div>
         </el-tab-pane>
-        <el-tab-pane :label="language === 'zh' ? '启动指南' : 'Setup Guide'" name="setup">
-          <div class="markdown-content" v-html="renderMarkdown(store.result?.setup_guide || '')"></div>
+        <el-tab-pane :label="language === 'zh' ? '项目概览' : 'Overview'" name="overview">
+          <div class="markdown-content" v-html="renderMarkdown(store.result?.overview || '')"></div>
+        </el-tab-pane>
+        <el-tab-pane :label="language === 'zh' ? '架构设计' : 'Architecture'" name="architecture">
+          <div class="markdown-content" v-html="renderMarkdown(store.result?.architecture || '')"></div>
+        </el-tab-pane>
+        <el-tab-pane :label="language === 'zh' ? '安装部署' : 'Install Guide'" name="install_guide">
+          <div class="markdown-content" v-html="renderMarkdown(store.result?.install_guide || store.result?.setup_guide || '')"></div>
+        </el-tab-pane>
+        <el-tab-pane :label="language === 'zh' ? '使用教程' : 'Tutorial'" name="usage_tutorial">
+          <div class="markdown-content" v-html="renderMarkdown(store.result?.usage_tutorial || '')"></div>
+        </el-tab-pane>
+        <el-tab-pane :label="language === 'zh' ? '开发指南' : 'Dev Guide'" name="dev_guide">
+          <div class="markdown-content" v-html="renderMarkdown(store.result?.dev_guide || '')"></div>
+        </el-tab-pane>
+        <el-tab-pane :label="language === 'zh' ? '故障排查' : 'Troubleshoot'" name="troubleshooting">
+          <div class="markdown-content" v-html="renderMarkdown(store.result?.troubleshooting || '')"></div>
         </el-tab-pane>
         <el-tab-pane :label="language === 'zh' ? '代码图谱' : 'Code Atlas'" name="atlas">
           <CodeAtlas :result="store.result" :loading="false" />
+        </el-tab-pane>
+        <el-tab-pane :label="language === 'zh' ? '示例代码' : 'Examples'" name="examples">
+          <ExampleCode :result="store.result" :loading="false" />
         </el-tab-pane>
       </el-tabs>
 
@@ -77,6 +95,7 @@ import hljs from 'highlight.js'
 import { getFavorites, addFavorite, removeFavorite } from '@/api/analyze'
 import { ElMessage } from 'element-plus'
 import CodeAtlas from '@/components/CodeAtlas.vue'
+import ExampleCode from '@/components/ExampleCode.vue'
 import { exportToMarkdown, exportToHTML, exportToPDF, downloadFile } from '@/utils/export'
 
 const router = useRouter()

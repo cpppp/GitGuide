@@ -3,40 +3,29 @@
 负责生成系统架构设计文档
 """
 
-from typing import Dict, Any, List, List
+from typing import Dict, Any, List
+from agents.generators.base_generator import BaseGenerator
 
 
-class ArchitectureGenerator:
-    """架构设计文档生成器"""
+class ArchitectureGenerator(BaseGenerator):
+    """架构设计文档生成器 - 基于LLM生成高质量文档"""
 
     def __init__(self):
-        self.name = "ArchitectureGenerator"
-        self.version = "1.0"
+        super().__init__("ArchitectureGenerator", "architecture")
 
     def generate(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        生成架构设计文档
-
-        参数:
-            context: 包含分析结果、仓库信息等
-
-        返回:
-            Dict: 包含生成的文档和质量信息
-        """
+        """生成架构设计文档"""
         repo_url = context.get("repo_url", "")
+        repo_path = context.get("repo_path", "")
         analysis_results = context.get("analysis_results", {})
 
         try:
-            # 从分析结果中提取信息
-            structure_result = analysis_results.get("structure_result", {})
-            code_pattern_result = analysis_results.get("code_pattern_result", {})
-
-            # 构建文档内容
-            content = self._build_architecture_content(
-                repo_url,
-                structure_result,
-                code_pattern_result
-            )
+            gen_context = self._get_shared_context(context)
+            
+            content = self.generate_with_llm(gen_context, repo_path, analysis_results)
+            
+            if not content:
+                content = self.generate_fallback(gen_context, repo_path, analysis_results)
 
             return {
                 "success": True,
@@ -44,7 +33,8 @@ class ArchitectureGenerator:
                 "content": content,
                 "metadata": {
                     "repo_url": repo_url,
-                    "generated_at": self._get_timestamp()
+                    "generated_at": self._get_timestamp(),
+                    "used_llm": self.llm is not None
                 }
             }
 
@@ -55,150 +45,176 @@ class ArchitectureGenerator:
                 "document_type": "architecture"
             }
 
-    def _build_architecture_content(
-        self,
-        repo_url: str,
-        structure_result: Dict[str, Any],
-        code_pattern_result: Dict[str, Any]
-    ) -> str:
-        """构建架构设计文档内容"""
+    def generate_with_llm(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
+        """使用LLM生成架构设计文档"""
+        
+        prompt = f"""你是一个技术架构专家。请根据以下项目信息，生成一份高质量的架构设计文档。
+
+## 项目信息
+- 语言: {context.get('language', 'Unknown')}
+- 项目类型: {context.get('project_type', 'Unknown')}
+- 框架: {', '.join(context.get('frameworks', [])) or '无'}
+
+## 目录结构
+```
+{context.get('directory_tree', '无')}
+```
+
+## README 内容
+{context.get('readme', '无README')[:1500]}
+
+## 主要源文件
+{self._format_main_files(context.get('main_files', []))}
+
+## 主要依赖
+{chr(10).join(context.get('requirements', [])[:15]) or '无'}
+
+---
+
+请生成一份架构设计文档，包含以下内容：
+1. **架构概览** - 整体架构风格和设计理念
+2. **架构图** - 使用Mermaid语法绘制架构图（flowchart或graph）
+3. **核心模块** - 列出核心模块及其职责
+4. **数据流** - 描述主要数据流向
+5. **技术选型理由** - 为什么选择这些技术
+6. **扩展性设计** - 如何支持未来扩展
+
+要求：
+- 使用Markdown格式
+- 架构图使用Mermaid语法，放在```mermaid代码块中
+- 内容要基于实际的项目信息，不要编造
+- 如果信息不足，可以说明"根据代码分析推测"
+"""
+
+        return self._call_llm(prompt)
+
+    def generate_fallback(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
+        """降级生成 - 当LLM不可用时使用模板"""
         lines = []
 
-        # 标题
         lines.append("# 架构设计")
         lines.append("")
 
-        # 架构图
-        lines.append("## 架构图")
-        architecture_diagram = self._generate_architecture_diagram(code_pattern_result)
-        lines.append(architecture_diagram)
+        lines.append("## 架构概览")
+        overview = self._generate_overview(context)
+        lines.extend(overview)
         lines.append("")
 
-        # 模块说明
-        lines.append("## 模块说明")
-        modules = self._generate_modules(structure_result)
+        lines.append("## 架构图")
+        diagram = self._generate_architecture_diagram(context)
+        lines.append(diagram)
+        lines.append("")
+
+        lines.append("## 核心模块")
+        modules = self._generate_modules(context)
         lines.extend(modules)
         lines.append("")
 
-        # 数据流
         lines.append("## 数据流")
-        data_flow = self._generate_data_flow(structure_result)
+        data_flow = self._generate_data_flow(context)
         lines.extend(data_flow)
-        lines.append("")
-
-        # 设计决策
-        lines.append("## 设计决策")
-        design_decisions = self._generate_design_decisions(code_pattern_result)
-        lines.extend(design_decisions)
 
         return "\n".join(lines)
 
-    def _generate_architecture_diagram(self, code_pattern_result: Dict[str, Any]) -> str:
-        """生成架构图（文本形式）"""
-        architecture_style = code_pattern_result.get("architecture_style", {})
-        detected_patterns = architecture_style.get("detected_patterns", [])
+    def _format_main_files(self, main_files: List[Dict[str, str]]) -> str:
+        """格式化主要源文件"""
+        if not main_files:
+            return "无"
+        
+        result = []
+        for f in main_files[:2]:
+            result.append(f"### {f['name']}")
+            result.append(f"```")
+            result.append(f['content'][:300])
+            result.append("```")
+        return '\n'.join(result)
 
-        if not detected_patterns:
-            return "```\n[通用架构图未检测到特定模式]\n```"
+    def _generate_overview(self, context: Dict[str, Any]) -> List[str]:
+        """生成架构概览"""
+        lines = []
+        language = context.get("language", "Unknown")
+        frameworks = context.get("frameworks", [])
+        project_type = context.get("project_type", "Unknown")
 
-        diagram_parts = ["```", "┌─────────────────────────┐"]
+        lines.append(f"本项目采用 **{project_type}** 架构。")
+        lines.append(f"主要使用 **{language}** 语言开发。")
+        if frameworks:
+            lines.append(f"核心框架: **{frameworks[0]}**。")
 
-        for pattern in detected_patterns[:2]:
-            pattern_name = pattern.get("pattern", "Unknown")
-            description = pattern.get("description", "")
-            diagram_parts.append(f"│     {pattern_name}     │")
+        return lines
 
-        diagram_parts.append("├─────────────────────────────────┤")
-        diagram_parts.append("│        数据层              │")
+    def _generate_architecture_diagram(self, context: Dict[str, Any]) -> str:
+        """生成架构图（Mermaid格式）"""
+        language = context.get("language", "Unknown")
+        frameworks = context.get("frameworks", [])
 
-        diagram_parts.append("├─────────────────────────────────┤")
-        diagram_parts.append("│       业务逻辑层            │")
-        diagram_parts.append("├─────────────────────────────────┤")
-        diagram_parts.append("│        表现层              │")
-        diagram_parts.append("└─────────────────────────────────┘")
-        diagram_parts.append("│        数据层返回结果            │")
-        diagram_parts.append("└arez────────────────────────────────┘")
-        diagram_parts.append("```")
+        lines = ["```mermaid", "flowchart TD"]
+        lines.append("    User[用户]")
+        
+        if language == "Python":
+            lines.append("    API[API层]")
+            lines.append("    Service[服务层]")
+            lines.append("    Data[数据层]")
+            lines.append("    User --> API")
+            lines.append("    API --> Service")
+            lines.append("    Service --> Data")
+        elif language in ["JavaScript", "TypeScript"]:
+            lines.append("    Frontend[前端组件]")
+            lines.append("    Backend[后端服务]")
+            lines.append("    Database[数据库]")
+            lines.append("    User --> Frontend")
+            lines.append("    Frontend --> Backend")
+            lines.append("    Backend --> Database")
+        else:
+            lines.append("    App[应用层]")
+            lines.append("    Core[核心层]")
+            lines.append("    User --> App")
+            lines.append("    App --> Core")
 
-        return "\n".join(diagram_parts)
+        lines.append("```")
+        return "\n".join(lines)
 
-    def _generate_modules(self, structure_result: Dict[str, Any]) -> List[str]:
+    def _generate_modules(self, context: Dict[str, Any]) -> List[str]:
         """生成模块说明"""
         modules = []
+        directory_tree = context.get("directory_tree", "")
+        main_files = context.get("main_files", [])
 
-        core_modules = structure_result.get("core_modules", [])
-        entry_points = structure_result.get("entry_points", [])
+        if main_files:
+            for f in main_files[:3]:
+                modules.append(f"- **{f['name']}**: 主要入口文件")
 
-        if core_modules:
-            modules.append("### 核心模块")
-            for module in core_modules:
-                name = module.get("name", "")
-                module_type = module.get("type", "")
-                path = module.get("path", "")
-
-                if module_type == "directory":
-                    modules.append(f"- **{name}** (目录)")
-                    modules.append(f"  - 路径: {path}")
-                else:
-                    modules.append(f"- **{name}** (文件)")
-                    modules.append(f"  - 路径: {path}")
-
-        if entry_points:
-            modules.append("")
-            modules.append("### 入口点")
-            for entry in entry_points:
-                name = entry.get("name", "")
-                description = entry.get("description", "")
-                modules.append(f"- **{name}**: {description}")
+        modules.append("")
+        modules.append("请查看目录结构了解完整模块划分。")
 
         return modules
 
-    def _generate_data_flow(self, structure_result: Dict[str, Any]) -> List[str]:
+    def _generate_data_flow(self, context: Dict[str, Any]) -> List[str]:
         """生成数据流说明"""
-        data_flow = []
+        language = context.get("language", "")
 
-        data_flow.append("### 主要数据流")
-        data_flow.append("1. **用户请求 → 表现层**")
-        data_flow.append("   - 用户通过前端界面发起请求")
-        data_flow.append("")
-        data_flow.append("2. **表现层 → 业务逻辑层**")
-        data_flow.append("   - 表现层将请求传递给后端业务逻辑")
-        data_flow.append("")
-        data_flow.append("3. **业务逻辑层 → 数据层**")
-        data_flow.append("   - 业务逻辑层处理数据并访问数据库")
-        data_flow.append("")
-        data_flow.append("4. **数据层返回结果**")
-        data_flow.append("   - 数据层返回处理后的数据")
-        data_flow.append("")
-        data_flow.append("5. **结果返回用户**")
-        data_flow.append("   - 最终结果返回给用户界面")
-
-        return data_flow
-
-    def _generate_design_decisions(self, code_pattern_result: Dict[str, Any]) -> List[str]:
-        """生成设计决策说明"""
-        decisions = []
-
-        architecture_style = code_pattern_result.get("architecture_style", {})
-        design_patterns = code_pattern_result.get("design_patterns", [])
-
-        decisions.append("### 架构选择")
-        primary_style = architecture_style.get("primary_style", "Unknown")
-        decisions.append(f"- 选择 **{primary_style}** 架构风格")
-
-        if design_patterns:
-            decisions.append("")
-            decisions.append("### 应用的设计模式")
-            for pattern in design_patterns:
-                decisions.append(f"- **{pattern}**: 提高代码的可维护性和扩展性")
-
-        decisions.append("")
-        decisions.append("### 代码组织")
-        code_org = code_pattern_result.get("code_organization", {})
-        structure_type = code_org.get("structure_type", "unknown")
-        decisions.append(f"- 采用 **{structure_type}** 目录结构")
-
-        return decisions
+        if language == "Python":
+            return [
+                "1. 用户发起HTTP请求",
+                "2. API层接收并验证请求",
+                "3. 服务层处理业务逻辑",
+                "4. 数据层访问数据库",
+                "5. 结果逐层返回用户"
+            ]
+        elif language in ["JavaScript", "TypeScript"]:
+            return [
+                "1. 用户与前端界面交互",
+                "2. 前端组件处理用户操作",
+                "3. 通过API调用后端服务",
+                "4. 后端处理并返回数据",
+                "5. 前端更新界面展示"
+            ]
+        else:
+            return [
+                "1. 用户输入",
+                "2. 应用处理",
+                "3. 输出结果"
+            ]
 
     def _get_timestamp(self) -> str:
         """获取当前时间戳"""

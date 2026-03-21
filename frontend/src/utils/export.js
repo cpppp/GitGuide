@@ -38,15 +38,45 @@ ${repoInfo.description || '暂无概述'}
 
 ---
 
-## 学习文档
+## 快速入门
 
-${result.learning_doc || '暂无学习文档'}
+${result.quick_start || result.learning_doc || '暂无快速入门文档'}
 
 ---
 
-## 启动指南
+## 项目概览
 
-${result.setup_guide || '暂无启动指南'}
+${result.overview || '暂无项目概览文档'}
+
+---
+
+## 架构设计
+
+${result.architecture || '暂无架构设计文档'}
+
+---
+
+## 安装部署
+
+${result.install_guide || result.setup_guide || '暂无安装部署文档'}
+
+---
+
+## 使用教程
+
+${result.usage_tutorial || '暂无使用教程文档'}
+
+---
+
+## 开发指南
+
+${result.dev_guide || '暂无开发指南文档'}
+
+---
+
+## 故障排查
+
+${result.troubleshooting || '暂无故障排查文档'}
 
 ---
 

@@ -3,6 +3,7 @@
 """
 import uuid
 import asyncio
+import json
 import os
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from typing import Optional
@@ -167,6 +168,9 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
     if ws_manager is None:
         ws_manager = WebSocketManager()
 
+    # 任务超时设置（秒）- 防止任务永久卡住
+    TASK_TIMEOUT = 600  # 10分钟
+
     try:
         # 设置取消检查器
         from agents.orchestrator import set_cancelled_checker
@@ -203,14 +207,21 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
         from agents.orchestrator import run_fast, run_with_progress
 
         if mode == "fast":
-            # 发送开始分析的消息
-            task_store.update_progress(job_id, "generating_learning_doc", 50, "正在生成学习文档...")
-            await ws_manager.send_progress(job_id, "generating_learning_doc", 50, "正在生成学习文档...")
+            # 定义进度回调函数（线程安全版本）
+            def fast_progress_callback(stage_key, progress_value, message):
+                task_store.update_progress(job_id, stage_key, progress_value, message)
+                print(f"[PROGRESS] {stage_key}: {progress_value}% - {message}")
+                # 注意：WebSocket 发送只在主线程进行，这里只更新 TaskStore
 
-            # 使用同步包装器来调用 run_fast，因为 run_fast 内部已有 time.sleep
-            # 需要在后台线程中运行以免阻塞事件循环
+            # 使用 run_fast 带进度回调
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, run_fast, repo_url)
+            try:
+                result = await asyncio.wait_for(
+                    loop.run_in_executor(None, run_fast, repo_url, fast_progress_callback),
+                    timeout=TASK_TIMEOUT
+                )
+            except asyncio.TimeoutError:
+                result = {"success": False, "error": f"任务超时（{TASK_TIMEOUT}秒），请重试或使用更小的仓库"}
 
             # 发送后续进度
             task_store.update_progress(job_id, "generating_setup_guide", 85, "正在生成启动指南...")
@@ -236,13 +247,21 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
                 await ws_manager.send_cancelled(job_id)
                 return
 
-            # 定义进度回调函数（更新任务状态，依赖前端轮询获取进度）
+            # 定义进度回调函数（线程安全版本）
             def progress_callback(stage_key, progress_value, message):
                 task_store.update_progress(job_id, stage_key, progress_value, message)
+                print(f"[PROGRESS] {stage_key}: {progress_value}% - {message}")
+                # 注意：WebSocket 发送只在主线程进行，这里只更新 TaskStore
 
             # 调用详细分析
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, run_with_progress, repo_url, progress_callback)
+            try:
+                result = await asyncio.wait_for(
+                    loop.run_in_executor(None, run_with_progress, repo_url, progress_callback),
+                    timeout=TASK_TIMEOUT
+                )
+            except asyncio.TimeoutError:
+                result = {"success": False, "error": f"任务超时（{TASK_TIMEOUT}秒），请重试或使用更小的仓库"}
 
         # 检查取消
         if task_store.is_cancelled(job_id):
@@ -254,33 +273,62 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
             task_store.update_progress(job_id, "finalizing", 95, "正在整理结果...")
             await ws_manager.send_progress(job_id, "finalizing", 95, "正在整理结果...")
 
-            # 保存结果
-            task_store.set_result(job_id, {
+            # 构建结果对象（统一发送给 TaskStore、WebSocket 和前端）
+            result_data = {
                 "repo_url": result["repo_url"],
+                # V3.0 文档（兼容旧字段）
+                "quick_start": result.get("quick_start", result.get("learning_doc", "")),
+                "overview": result.get("overview", ""),
+                "architecture": result.get("architecture", ""),
+                "install_guide": result.get("install_guide", result.get("setup_guide", "")),
+                # V3.1 新文档
+                "usage_tutorial": result.get("usage_tutorial", ""),
+                "dev_guide": result.get("dev_guide", ""),
+                "troubleshooting": result.get("troubleshooting", ""),
+                # V3.1 代码图谱数据
+                "code_graph": result.get("code_graph", {}),
+                "examples": result.get("examples", []),
+                # 旧字段（兼容）
                 "learning_doc": result.get("learning_doc", ""),
                 "setup_guide": result.get("setup_guide", ""),
                 "repo_info": result.get("repo_info", {})
-            })
+            }
 
-            # 保存到数据库
+            # 保存结果到 TaskStore（统一的数据结构）
+            task_store.set_result(job_id, result_data)
+
+            # 保存到数据库 - 支持7种文档
             from backend.database.config import SessionLocal
             from backend.database.crud import RepositoryCRUD
             db = SessionLocal()
             try:
                 repo_info = result.get("repo_info", {})
                 existing_repo = RepositoryCRUD.get_by_url(db, repo_url)
-                
+
                 repo_data = {
                     "url": repo_url,
                     "name": repo_info.get("name") or repo_info.get("full_name", ""),
                     "description": repo_info.get("description", ""),
                     "language": repo_info.get("language", ""),
                     "stars": repo_info.get("stargazers_count", 0) or repo_info.get("stars", 0),
+                    # V3.0 文档
+                    "quick_start": result.get("quick_start", ""),
+                    "overview_doc": result.get("overview", ""),
+                    "architecture_doc": result.get("architecture", ""),
+                    "install_guide": result.get("install_guide", ""),
+                    # V3.1 新文档
+                    "usage_tutorial": result.get("usage_tutorial", ""),
+                    "dev_guide": result.get("dev_guide", ""),
+                    "troubleshooting": result.get("troubleshooting", ""),
+                    # V3.1 代码图谱数据
+                    "code_graph": json.dumps(result.get("code_graph", {}), ensure_ascii=False),
+                    "examples": json.dumps(result.get("examples", []), ensure_ascii=False),
+                    # 旧字段（兼容）
                     "learning_doc": result.get("learning_doc", ""),
                     "setup_guide": result.get("setup_guide", ""),
                     "analysis_result": str(result.get("repo_info", {}))
                 }
-                
+
                 if existing_repo:
                     RepositoryCRUD.update(db, repo_url, repo_data)
                 else:
@@ -290,7 +338,7 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
 
             # 发送完成
             await ws_manager.send_progress(job_id, "completed", 100, "分析完成！")
-            await ws_manager.send_result(job_id, result)
+            await ws_manager.send_result(job_id, result_data)
 
             # 添加到历史记录
             from core.history import add_history
@@ -308,18 +356,28 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
 @router.get("/analyze/{job_id}/code-graph")
 async def get_code_graph(job_id: str):
     """
-    获取代码图谱
+    获取代码图谱 - V3.1 从存储的结果中获取
     """
     task = task_store.get_task(job_id)
     if not task or task.get("status") != "completed":
         return {"error": "Job not found or not completed"}
     
     result = task.get("result", {})
+    
+    # V3.1: 优先使用存储的代码图谱数据
+    code_graph = result.get("code_graph", {})
+    examples = result.get("examples", [])
+    
+    if code_graph:
+        code_graph["examples"] = examples
+        return code_graph
+    
+    # 降级：如果存储数据不存在，尝试从仓库路径获取
     repo_path = result.get("repo_path")
+    if repo_path and os.path.exists(repo_path):
+        from backend.services.code_graph import CodeGraphService
+        graph = CodeGraphService.analyze_structure(repo_path)
+        graph["examples"] = CodeGraphService.extract_examples(repo_path)
+        return graph
     
-    if not repo_path or not os.path.exists(repo_path):
-        return {"error": "Repository not found"}
-    
-    from backend.services.code_graph import CodeGraphService
-    graph = CodeGraphService.analyze_structure(repo_path)
-    return graph
+    return {"error": "Code graph data not available", "tree": {}, "stats": {}, "dependencies": {}}

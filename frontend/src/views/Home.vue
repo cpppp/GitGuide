@@ -298,7 +298,7 @@ function formatDate(dateString) {
 function viewSavedRepo(item) {
   const urlParts = item.url.replace('https://github.com/', '').split('/')
   const fullName = urlParts.join('/')
-  
+
   store.setRepoUrl(item.url)
   store.setResult({
     repo_url: item.url,
@@ -310,6 +310,16 @@ function viewSavedRepo(item) {
       stargazers_count: item.stars || 0,
       html_url: item.url
     },
+    // V3.0 文档
+    quick_start: item.quick_start,
+    overview: item.overview,
+    architecture: item.architecture,
+    install_guide: item.install_guide,
+    // V3.1 新文档
+    usage_tutorial: item.usage_tutorial,
+    dev_guide: item.dev_guide,
+    troubleshooting: item.troubleshooting,
+    // 旧字段（兼容）
     learning_doc: item.learning_doc,
     setup_guide: item.setup_guide
   })

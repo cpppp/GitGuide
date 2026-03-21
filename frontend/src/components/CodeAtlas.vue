@@ -16,14 +16,9 @@
           <div v-if="loading" class="loading">加载中...</div>
           <div v-else-if="fileStats.length > 0">
             <el-table :data="fileStats" style="width: 100%" max-height="400">
-              <el-table-column prop="name" label="文件名" width="300" />
-              <el-table-column prop="path" label="路径" />
-              <el-table-column prop="size" label="大小" width="100">
-                <template #default="{ row }">
-                  {{ formatSize(row.size) }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="type" label="类型" width="100" />
+              <el-table-column prop="name" label="文件类型" width="150" />
+              <el-table-column prop="count" label="文件数量" width="120" />
+              <el-table-column prop="lines" label="代码行数" width="120" />
             </el-table>
           </div>
           <div v-else class="empty">暂无文件统计信息</div>
@@ -67,29 +62,62 @@ const props = defineProps({
 
 const activeSubTab = ref('tree')
 
-// 从结果中提取目录结构
-const directoryTree = computed(() => {
-  if (!props.result?.directory_structure) return null
+const codeGraph = computed(() => {
+  if (!props.result?.code_graph) return null
   try {
-    return JSON.parse(props.result.directory_structure)
+    if (typeof props.result.code_graph === 'string') {
+      return JSON.parse(props.result.code_graph)
+    }
+    return props.result.code_graph
   } catch {
-    return props.result.directory_structure
+    return null
   }
 })
 
-// 从结果中提取文件统计
+const directoryTree = computed(() => {
+  if (codeGraph.value?.tree) {
+    return codeGraph.value.tree
+  }
+  if (props.result?.directory_structure) {
+    try {
+      return JSON.parse(props.result.directory_structure)
+    } catch {
+      return props.result.directory_structure
+    }
+  }
+  return null
+})
+
 const fileStats = computed(() => {
+  if (codeGraph.value?.stats) {
+    const stats = codeGraph.value.stats
+    return Object.entries(stats).map(([ext, data]) => ({
+      name: ext,
+      count: data.count || 0,
+      lines: data.lines || 0
+    }))
+  }
   return props.result?.file_stats || []
 })
 
-// 从结果中提取依赖关系
 const dependencies = computed(() => {
-  if (!props.result?.dependencies) return []
-  try {
-    return JSON.parse(props.result.dependencies)
-  } catch {
-    return props.result.dependencies
+  if (codeGraph.value?.dependencies) {
+    const deps = codeGraph.value.dependencies
+    if (deps.imports) {
+      return deps.imports.map(imp => ({
+        from: 'project',
+        to: imp
+      }))
+    }
   }
+  if (props.result?.dependencies) {
+    try {
+      return JSON.parse(props.result.dependencies)
+    } catch {
+      return props.result.dependencies
+    }
+  }
+  return []
 })
 
 // 渲染目录树

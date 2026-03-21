@@ -5,6 +5,7 @@
 
 from typing import Dict, Any, Optional
 import os
+import json
 
 
 class TypeAnalyzer:
