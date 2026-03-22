@@ -199,7 +199,13 @@ npm run dev
 6. **AI 智能问答** - 切换到 Chat 页面，针对项目提出问题，获取智能解答
 7. **查看已分析仓库** - 首页"已分析仓库"卡片显示历史记录，点击可查看已保存的文档
 
-## 🆕 V3.0 新功能
+## 🆕 V3.0/V3.1 已完成功能
+
+### Multi-Agent 架构
+
+- **Orchestrator** - 协调器管理多 Agent 工作流
+- **Analyzer Team** - 4 个分析 Agent 并行执行（TypeAnalyzer、StructureAnalyzer、DependencyAnalyzer、CodePatternAnalyzer）
+- **Generator Team** - 7 个文档生成器并行执行（QuickStart、Overview、Architecture、InstallGuide、Tutorial、DevGuide、Troubleshoot）
 
 ### 数据持久化
 
@@ -225,6 +231,17 @@ npm run dev
 | `/api/chat/history` | DELETE | 清除问答历史记录 |
 | `/api/data/export` | GET | 导出所有数据 |
 | `/api/data/import` | POST | 导入数据 |
+
+### 文档生成（英文输出）
+
+所有文档生成器支持英文输出，包括：
+- 快速入门（Quick Start）
+- 项目概览（Project Overview）
+- 架构设计（Architecture Design）
+- 安装部署（Installation Guide）
+- 使用教程（Usage Tutorial）
+- 开发指南（Development Guide）
+- 故障排查（Troubleshooting）
 
 ## 📂 支持的项目类型
 

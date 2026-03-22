@@ -1,6 +1,6 @@
-"""OverviewGenerator - 项目概览文档生成器
+"""OverviewGenerator - Project Overview Document Generator
 
-负责生成完整的项目概览文档
+Generates comprehensive project overview documentation
 """
 
 from typing import Dict, Any, List
@@ -8,20 +8,20 @@ from agents.generators.base_generator import BaseGenerator
 
 
 class OverviewGenerator(BaseGenerator):
-    """项目概览文档生成器 - 基于LLM生成高质量文档"""
+    """Project Overview Document Generator - High-quality documentation via LLM"""
 
     def __init__(self):
         super().__init__("OverviewGenerator", "overview")
 
     def generate(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        生成项目概览文档
+        Generate project overview document
 
-        参数:
-            context: 包含分析结果、仓库信息等
+        Args:
+            context: Contains analysis results, repository info, etc.
 
-        返回:
-            Dict: 包含生成的文档和质量信息
+        Returns:
+            Dict: Contains generated document and quality info
         """
         repo_url = context.get("repo_url", "")
         repo_path = context.get("repo_path", "")
@@ -29,9 +29,9 @@ class OverviewGenerator(BaseGenerator):
 
         try:
             gen_context = self._get_shared_context(context)
-            
+
             content = self.generate_with_llm(gen_context, repo_path, analysis_results)
-            
+
             if not content:
                 content = self.generate_fallback(gen_context, repo_path, analysis_results)
 
@@ -54,126 +54,127 @@ class OverviewGenerator(BaseGenerator):
             }
 
     def generate_with_llm(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
-        """使用LLM生成项目概览文档"""
-        
-        prompt = f"""你是一个技术文档专家。请根据以下项目信息，生成一份高质量的项目概览文档。
+        """Generate project overview document using LLM"""
 
-## 项目信息
-- 语言: {context.get('language', 'Unknown')}
-- 项目类型: {context.get('project_type', 'Unknown')}
-- 框架: {', '.join(context.get('frameworks', [])) or '无'}
-- 构建系统: {context.get('build_system', 'Unknown')}
+        prompt = f"""You are a technical documentation expert. Based on the following project information, generate a high-quality project overview document.
 
-## 目录结构
+## Project Information
+- Language: {context.get('language', 'Unknown')}
+- Project Type: {context.get('project_type', 'Unknown')}
+- Frameworks: {', '.join(context.get('frameworks', [])) or 'None'}
+- Build System: {context.get('build_system', 'Unknown')}
+
+## Directory Structure
 ```
-{context.get('directory_tree', '无')}
+{context.get('directory_tree', 'None')}
 ```
 
-## README 内容
-{context.get('readme', '无README')[:2000]}
+## README Content
+{context.get('readme', 'No README')[:2000]}
 
-## 主要依赖
-{chr(10).join(context.get('requirements', [])[:20]) or '无'}
+## Main Dependencies
+{chr(10).join(context.get('requirements', [])[:20]) or 'None'}
 
 ---
 
-请生成一份项目概览文档，包含以下内容：
-1. **项目背景** - 项目是什么，解决什么问题，目标用户是谁
-2. **核心功能** - 列出5-8个核心功能点
-3. **技术架构** - 技术栈、架构风格、设计模式
-4. **适用场景** - 适合什么类型的项目和开发者
-5. **项目特色** - 与同类项目相比的优势
+Please generate a project overview document containing:
 
-要求：
-- 使用Markdown格式
-- 内容要具体、准确，基于提供的项目信息
-- 不要编造不存在的功能
-- 如果信息不足，可以说明"根据项目代码分析"
+1. **Project Background** - What is this project, what problem does it solve, who is the target audience
+2. **Core Features** - List 5-8 core features
+3. **Technical Architecture** - Tech stack, architecture style, design patterns
+4. **Use Cases** - What types of projects and developers is this suitable for
+5. **Project Highlights** - Advantages compared to similar projects
+
+Requirements:
+- Use Markdown format
+- Content should be specific and accurate, based on the provided project information
+- Do not fabricate features that do not exist
+- If information is insufficient, indicate "Based on project code analysis"
 """
 
         return self._call_llm(prompt)
 
     def generate_fallback(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
-        """降级生成 - 当LLM不可用时使用模板"""
+        """Fallback generation - Template when LLM is unavailable"""
         lines = []
 
-        lines.append("# 项目概览")
+        lines.append("# Project Overview")
         lines.append("")
 
-        lines.append("## 项目背景")
+        lines.append("## Project Background")
         background = self._generate_background(context)
         lines.extend(background)
         lines.append("")
 
-        lines.append("## 核心功能")
+        lines.append("## Core Features")
         features = self._generate_features(context)
         lines.extend(features)
         lines.append("")
 
-        lines.append("## 技术架构")
+        lines.append("## Technical Architecture")
         tech_stack = self._generate_tech_stack(context)
         lines.extend(tech_stack)
         lines.append("")
 
-        lines.append("## 适用场景")
+        lines.append("## Use Cases")
         scenarios = self._generate_scenarios(context)
         lines.extend(scenarios)
 
         return "\n".join(lines)
 
     def _generate_background(self, context: Dict[str, Any]) -> List[str]:
-        """生成项目背景说明"""
+        """Generate project background description"""
         background = []
 
         project_type = context.get("project_type", "Unknown")
         language = context.get("language", "Unknown")
         frameworks = context.get("frameworks", [])
 
-        background.append(f"本项目是一个 **{project_type}** 项目。")
-        background.append(f"使用 **{language}** 编程语言开发。")
+        background.append(f"This is a **{project_type}** project.")
+        background.append(f"Developed using **{language}** programming language.")
         if frameworks:
-            background.append(f"主要使用 **{frameworks[0]}** 框架。")
+            background.append(f"Primarily uses **{frameworks[0]}** framework.")
 
         return background
 
     def _generate_features(self, context: Dict[str, Any]) -> List[str]:
-        """生成功能列表"""
+        """Generate feature list"""
         features = []
         frameworks = context.get("frameworks", [])
         language = context.get("language", "")
 
-        features.append("### 主要特性")
+        features.append("### Main Features")
         features.append("")
 
         for fw in frameworks[:3]:
-            features.append(f"- 基于 {fw} 框架")
+            features.append(f"- Based on {fw} framework")
 
         if language == "Python":
-            features.append("- Python 后端服务")
-            features.append("- 模块化设计")
+            features.append("- Python backend services")
+            features.append("- Modular design")
         elif language in ["JavaScript", "TypeScript"]:
-            features.append("- 前端/全栈开发")
-            features.append("- 组件化架构")
+            features.append("- Frontend/full-stack development")
+            features.append("- Component-based architecture")
 
-        return features if len(features) > 2 else ["- 请查看项目文档了解更多功能"]
+        return features if len(features) > 2 else ["- Please refer to project documentation for more features"]
 
     def _generate_tech_stack(self, context: Dict[str, Any]) -> List[str]:
-        """生成技术栈说明"""
+        """Generate tech stack description"""
         tech_stack = []
 
         language = context.get("language", "Unknown")
         frameworks = context.get("frameworks", [])
         build_system = context.get("build_system", "Unknown")
 
-        tech_stack.append(f"- **编程语言**: {language}")
+        tech_stack.append(f"- **Programming Language**: {language}")
         if frameworks:
-            tech_stack.append(f"- **主要框架**: {frameworks[0]}")
-        tech_stack.append(f"- **构建系统**: {build_system}")
+            tech_stack.append(f"- **Main Framework**: {frameworks[0]}")
+        tech_stack.append(f"- **Build System**: {build_system}")
 
         requirements = context.get("requirements", [])
         if requirements:
             tech_stack.append("")
-            tech_stack.append("### 关键依赖")
+            tech_stack.append("### Key Dependencies")
             for dep in requirements[:5]:
                 if dep:
                     tech_stack.append(f"- {dep}")
@@ -181,26 +182,26 @@ class OverviewGenerator(BaseGenerator):
         return tech_stack
 
     def _generate_scenarios(self, context: Dict[str, Any]) -> List[str]:
-        """生成适用场景说明"""
+        """Generate use case description"""
         scenarios = []
         project_type = context.get("project_type", "").lower()
 
         if "web" in project_type or "api" in project_type:
-            scenarios.append("- Web 应用程序开发")
-            scenarios.append("- RESTful API 服务")
+            scenarios.append("- Web application development")
+            scenarios.append("- RESTful API services")
         elif "react" in project_type or "vue" in project_type:
-            scenarios.append("- 单页应用(SPA)开发")
-            scenarios.append("- 前端组件开发")
+            scenarios.append("- Single Page Application (SPA) development")
+            scenarios.append("- Frontend component development")
         else:
-            scenarios.append("- 通用应用开发")
+            scenarios.append("- General application development")
 
         return scenarios
 
     def _get_timestamp(self) -> str:
-        """获取当前时间戳"""
+        """Get current timestamp"""
         from datetime import datetime
         return datetime.now().isoformat()
 
 
-# 全局实例
+# Global instance
 overview_generator = OverviewGenerator()

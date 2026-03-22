@@ -416,15 +416,15 @@ class Workflow:
             except Exception:
                 pass
 
-        # 生成目录树（增强到3层深度，100条目）
-        context["directory_tree"] = self._get_directory_tree(repo_path, max_depth=3)
+        # 生成目录树（增强到5层深度，250条目）
+        context["directory_tree"] = self._get_directory_tree(repo_path, max_depth=5)
         
         # 读取requirements.txt
         try:
             req_path = os.path.join(repo_path, 'requirements.txt')
             if os.path.exists(req_path):
                 with open(req_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    context["requirements"] = [line.strip() for line in f.readlines()[:50] if line.strip() and not line.startswith('#')]
+                    context["requirements"] = [line.strip() for line in f.readlines()[:150] if line.strip() and not line.startswith('#')]
         except Exception:
             pass
         
@@ -446,8 +446,8 @@ class Workflow:
 
         return context
 
-    def _get_directory_tree(self, repo_path: str, max_depth: int = 3) -> str:
-        """获取目录树（增强版：3层深度，100条目）"""
+    def _get_directory_tree(self, repo_path: str, max_depth: int = 5) -> str:
+        """获取目录树（增强版：5层深度，250条目）"""
         import os
         lines = []
 
@@ -469,10 +469,10 @@ class Workflow:
                 pass
 
         walk_dir(repo_path)
-        return '\n'.join(lines[:100])  # 50 → 100
+        return '\n'.join(lines[:250])  # 50 → 250
 
     def _get_main_files(self, repo_path: str, language: str) -> list:
-        """获取主要源文件内容（增强版：10个文件，每个150行）"""
+        """获取主要源文件内容（增强版：300个文件，每个500行）"""
         import os
         main_files = []
         patterns = {
@@ -497,12 +497,12 @@ class Workflow:
 
         files_to_check = patterns.get(language, patterns['Python'])
 
-        for file_name in files_to_check[:50]:  # 读取更多文件：50个
+        for file_name in files_to_check[:300]:  # 读取更多文件：300个
             try:
                 full_path = os.path.join(repo_path, file_name)
                 if os.path.exists(full_path) and os.path.isfile(full_path):
                     with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        content = ''.join(f.readlines()[:250])  # 50行 → 250行
+                        content = ''.join(f.readlines()[:500])  # 50行 → 500行
                     if content.strip():
                         main_files.append({
                             "name": file_name,

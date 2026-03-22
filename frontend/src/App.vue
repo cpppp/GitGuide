@@ -50,6 +50,12 @@
           </el-menu>
 
           <div class="header-actions">
+            <el-button class="auth-btn login-btn" text @click="handleLogin">
+              {{ language === 'zh' ? '登录' : 'Login' }}
+            </el-button>
+            <el-button class="auth-btn register-btn" type="primary" @click="handleRegister">
+              {{ language === 'zh' ? '注册' : 'Register' }}
+            </el-button>
             <!-- 主题切换 -->
             <el-button class="theme-btn" text @click="toggleTheme">
               <span class="theme-icon">{{ isDark ? '◐' : '◑' }}</span>
@@ -81,6 +87,27 @@
           </transition>
         </router-view>
       </el-main>
+      <el-footer class="main-footer">
+        <div class="footer-content">
+          <div class="footer-left">
+            <span class="footer-logo">{{ t('app.title', language) }}</span>
+            <span class="footer-divider">|</span>
+            <span class="footer-slogan">{{ language === 'zh' ? '快速上手任意 GitHub 仓库' : 'Quick Start Any GitHub Repository' }}</span>
+          </div>
+          <div class="footer-right">
+            <span class="footer-copyright">
+              © {{ new Date().getFullYear() }} GitGuide.
+              {{ language === 'zh' ? '版权所有' : 'All Rights Reserved' }}.
+            </span>
+            <span class="footer-separator">|</span>
+            <a href="#" class="footer-link">{{ language === 'zh' ? '隐私政策' : 'Privacy Policy' }}</a>
+            <span class="footer-separator">|</span>
+            <a href="#" class="footer-link">{{ language === 'zh' ? '使用条款' : 'Terms of Use' }}</a>
+            <span class="footer-separator">|</span>
+            <a href="#" class="footer-link">{{ language === 'zh' ? '联系我们' : 'Contact Us' }}</a>
+          </div>
+        </div>
+      </el-footer>
     </el-container>
   </div>
 </template>
@@ -103,6 +130,16 @@ const activeMenu = computed(() => route.path)
 
 function handleLanguageChange(lang) {
   setLanguage(lang)
+}
+
+function handleLogin() {
+  // Placeholder for login functionality
+  console.log('Login clicked')
+}
+
+function handleRegister() {
+  // Placeholder for register functionality
+  console.log('Register clicked')
 }
 </script>
 
@@ -303,6 +340,9 @@ body {
   padding: 0;
   transition: background-color var(--transition-normal), box-shadow var(--transition-normal);
   border-bottom: 1px solid var(--border-light);
+  height: 80px;
+  display: flex;
+  align-items: center;
 }
 
 .header-content {
@@ -310,8 +350,9 @@ body {
   align-items: center;
   max-width: 1200px;
   margin: 0 auto;
-  height: 72px;
+  height: 80px;
   padding: 0 24px;
+  width: 100%;
 }
 
 /* Logo 区域 */
@@ -353,22 +394,27 @@ body {
   flex: 1;
   border-bottom: none !important;
   background-color: transparent !important;
-  height: 72px;
+  height: 80px;
+  overflow: visible;
 }
 
-.header-menu .el-menu-item {
+.header-menu :deep(.el-menu-item) {
   font-family: 'Noto Sans SC', sans-serif;
   font-size: 15px;
   font-weight: 500;
-  height: 72px;
-  line-height: 72px;
-  padding: 0 24px;
+  height: 80px;
+  line-height: 80px;
+  padding: 0 20px;
   color: var(--text-color-secondary) !important;
   transition: all var(--transition-normal);
   position: relative;
+  border-bottom: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.header-menu .el-menu-item::after {
+.header-menu :deep(.el-menu-item)::after {
   content: '';
   position: absolute;
   bottom: 0;
@@ -381,21 +427,45 @@ body {
   transition: width var(--transition-normal);
 }
 
-.header-menu .el-menu-item:hover {
+.header-menu :deep(.el-menu-item):hover {
   color: var(--text-color) !important;
   background-color: transparent !important;
 }
 
-.header-menu .el-menu-item:hover::after {
+.header-menu :deep(.el-menu-item):hover::before {
+  display: none !important;
+}
+
+.header-menu :deep(.el-menu-item):hover::after {
   width: 60%;
 }
 
-.header-menu .el-menu-item.is-active {
+/* 修复悬停背景超出导航栏的问题 */
+.header-menu :deep(.el-menu) {
+  height: 80px;
+  border-bottom: none !important;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+  position: relative;
+}
+
+.header-menu :deep(.el-menu--horizontal) {
+  border-bottom: none !important;
+  overflow: visible !important;
+}
+
+.header-menu :deep(.el-menu-item) {
+  position: relative;
+  z-index: 1;
+}
+
+.header-menu :deep(.el-menu-item.is-active) {
   color: var(--primary-color) !important;
   background-color: transparent !important;
 }
 
-.header-menu .el-menu-item.is-active::after {
+.header-menu :deep(.el-menu-item.is-active)::after {
   width: 80%;
 }
 
@@ -415,8 +485,8 @@ body {
 
 .theme-btn,
 .lang-btn {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -703,17 +773,136 @@ body {
   background-color: transparent !important;
 }
 
-.dark-theme .el-menu-item {
+.dark-theme :deep(.el-menu-item) {
   color: var(--text-color-secondary) !important;
 }
 
-.dark-theme .el-menu-item:hover,
-.dark-theme .el-menu-item.is-active {
+.dark-theme :deep(.el-menu-item:hover),
+.dark-theme :deep(.el-menu-item.is-active) {
   background-color: var(--bg-warm) !important;
 }
 
 .dark-theme .theme-btn:hover,
 .dark-theme .lang-btn:hover {
   background: var(--bg-warm);
+}
+
+/* 登录/注册按钮 */
+.auth-btn {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  border-radius: var(--radius-md) !important;
+  transition: all var(--transition-normal) !important;
+}
+
+.login-btn {
+  color: var(--text-color-secondary) !important;
+}
+
+.login-btn:hover {
+  color: var(--primary-color) !important;
+  background: var(--bg-warm) !important;
+}
+
+.register-btn {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)) !important;
+  border-color: var(--primary-color) !important;
+  color: #fff !important;
+}
+
+.register-btn:hover {
+  background: linear-gradient(135deg, var(--primary-light), var(--primary-color)) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 底部 Footer */
+.main-footer {
+  background: var(--bg-color-secondary);
+  border-top: 1px solid var(--border-light);
+  padding: 24px 24px 16px;
+  margin-top: auto;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-logo {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--primary-dark);
+}
+
+.dark-theme .footer-logo {
+  color: var(--primary-light);
+}
+
+.footer-divider {
+  color: var(--border-color);
+}
+
+.footer-slogan {
+  font-size: 13px;
+  color: var(--text-color-muted);
+}
+
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.footer-copyright,
+.footer-separator {
+  font-size: 12px;
+  color: var(--text-color-muted);
+}
+
+.footer-link {
+  font-size: 12px;
+  color: var(--text-color-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.footer-link:hover {
+  color: var(--primary-color);
+}
+
+@media (max-width: 768px) {
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .footer-left {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .footer-divider {
+    display: none;
+  }
+
+  .footer-right {
+    justify-content: center;
+  }
 }
 </style>

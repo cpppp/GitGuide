@@ -25,14 +25,13 @@ export const useAnalysisStore = defineStore('analysis', () => {
   const isFailed = computed(() => status.value === 'failed')
 
   // 启动分析
-  async function start(url, analysisMode = 'fast') {
+  async function start(url) {
     repoUrl.value = url
-    mode.value = analysisMode
     error.value = ''
     result.value = null
 
     try {
-      const response = await startAnalyze(url, analysisMode)
+      const response = await startAnalyze(url)
       jobId.value = response.data.job_id
       status.value = 'pending'
       progress.value = 0

@@ -89,3 +89,11 @@ async def delete_repository(repo_url: str, db: Session = Depends(get_db)):
     """
     success = RepositoryCRUD.delete(db, repo_url)
     return {"success": success}
+
+@router.delete("/repositories")
+async def delete_all_repositories(db: Session = Depends(get_db)):
+    """
+    删除所有已分析的仓库
+    """
+    deleted_count = RepositoryCRUD.delete_all(db)
+    return {"success": True, "deleted_count": deleted_count}

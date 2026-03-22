@@ -73,58 +73,46 @@
           :loading="store.isAnalyzing"
           @click="handleAnalyze"
         >
-          <span v-if="!store.isAnalyzing" class="btn-icon">✦</span>
+          <span v-if="!store.isAnalyzing" class="btn-icon">⚡</span>
           {{ store.isAnalyzing ? t('home.analyzing', language) : t('home.analyzeBtn', language) }}
         </el-button>
-      </div>
-
-      <div class="input-options">
-        <el-radio-group v-model="analysisMode" class="mode-select" :disabled="store.isAnalyzing">
-          <el-radio-button value="fast">
-            <span class="mode-icon">⚡</span>
-            {{ t('home.fastMode', language) }}
-          </el-radio-button>
-          <el-radio-button value="detailed">
-            <span class="mode-icon">📖</span>
-            {{ t('home.detailedMode', language) }}
-          </el-radio-button>
-        </el-radio-group>
       </div>
     </el-card>
 
     <!-- 进度面板 -->
     <transition name="progress-slide">
-      <el-card v-if="store.isAnalyzing" class="progress-card">
-        <div class="progress-header">
-          <span class="progress-title">{{ language === 'zh' ? '正在分析...' : 'Analyzing...' }}</span>
-          <el-button size="small" type="danger" text @click="handleCancel">
-            {{ language === 'zh' ? '取消' : 'Cancel' }}
-          </el-button>
-        </div>
-        <el-progress
-          :percentage="store.progress"
-          :status="store.isFailed ? 'exception' : undefined"
-          :stroke-width="12"
-          :show-text="false"
-          class="custom-progress"
-        />
-        <p class="progress-message">{{ store.progressMessage }}</p>
-
-        <div class="stage-list">
-          <div
-            v-for="(stage, index) in stages"
-            :key="stage.key"
-            class="stage-item"
-            :class="{
-              'stage-completed': getStageIndex(store.stageKey) > index,
-              'stage-current': getStageIndex(store.stageKey) === index
-            }"
-          >
-            <span class="stage-dot"></span>
-            <span class="stage-text">{{ language === 'zh' ? stage.name : stage.nameEn }}</span>
+      <div v-if="store.isAnalyzing" class="progress-bar-container">
+        <div class="progress-inner">
+          <div class="progress-info">
+            <span class="progress-label">{{ language === 'zh' ? '正在分析' : 'Analyzing' }}</span>
+            <span class="progress-percent">{{ store.progress }}%</span>
+          </div>
+          <el-progress
+            :percentage="store.progress"
+            :status="store.isFailed ? 'exception' : undefined"
+            :stroke-width="6"
+            :show-text="false"
+            class="compact-progress"
+          />
+          <div class="stage-mini">
+            <span
+              v-for="(stage, index) in stages"
+              :key="stage.key"
+              class="stage-mini-item"
+              :class="{
+                'stage-completed': getStageIndex(store.stageKey) > index,
+                'stage-current': getStageIndex(store.stageKey) === index
+              }"
+            >
+              <span class="stage-mini-dot"></span>
+              {{ language === 'zh' ? stage.name : stage.nameEn }}
+            </span>
           </div>
         </div>
-      </el-card>
+        <el-button size="small" type="danger" text @click="handleCancel" class="cancel-btn">
+          ×
+        </el-button>
+      </div>
     </transition>
 
     <!-- 错误提示 -->
@@ -155,55 +143,62 @@
         </div>
       </el-card>
 
-      <!-- 已有数据区 -->
-      <div class="data-cards">
+      <!-- 数据标签页 -->
+      <el-card class="data-tabs-card">
+        <template #header>
+          <div class="data-tabs-header">
+            <span
+              v-for="tab in dataTabs"
+              :key="tab.key"
+              class="data-tab-item"
+              :class="{ 'is-active': activeDataTab === tab.key }"
+              @click="activeDataTab = tab.key"
+            >
+              <span class="tab-icon">{{ tab.icon }}</span>
+              <span class="tab-text">{{ language === 'zh' ? tab.name : tab.nameEn }}</span>
+              <span class="tab-count">{{ tab.count }}</span>
+            </span>
+          </div>
+        </template>
+
         <!-- 已分析仓库 -->
-        <el-card class="saved-repos-card">
-          <template #header>
-            <div class="card-header">
-              <span class="card-icon">📚</span>
-              <span>{{ language === 'zh' ? '已分析仓库' : 'Saved Repos' }}</span>
-              <el-button text @click="$router.push('/repositories')" class="view-all-btn">
-                {{ language === 'zh' ? '查看全部' : 'View All' }}
-              </el-button>
-            </div>
-          </template>
+        <div v-show="activeDataTab === 'saved'" class="data-content">
           <div v-if="savedRepos.length === 0" class="empty-state-small">
             <span class="empty-icon">📭</span>
             <span>{{ language === 'zh' ? '暂无已分析的仓库' : 'No saved repositories' }}</span>
           </div>
-          <div v-else class="item-list">
-            <div v-for="(item, index) in savedRepos.slice(0, 3)" :key="index" class="list-item">
-              <div class="item-info">
-                <span class="item-name">{{ item.name || item.url }}</span>
-                <span class="item-date">{{ formatDate(item.updated_at) }}</span>
+          <div v-else class="data-list">
+            <div v-for="(item, index) in savedRepos.slice(0, 5)" :key="index" class="data-item">
+              <div class="data-item-info">
+                <span class="data-item-name">{{ item.name || item.url }}</span>
+                <span class="data-item-date">{{ formatDate(item.updated_at) }}</span>
               </div>
-              <el-button size="small" :disabled="store.isAnalyzing" @click="viewSavedRepo(item)">
-                {{ language === 'zh' ? '查看' : 'View' }}
-              </el-button>
+              <div class="data-item-actions">
+                <el-button size="small" :disabled="store.isAnalyzing" @click="viewSavedRepo(item)">
+                  {{ language === 'zh' ? '查看' : 'View' }}
+                </el-button>
+                <el-button size="small" type="danger" text @click="handleDeleteSavedRepo(item.url)">×</el-button>
+              </div>
             </div>
+            <el-button v-if="savedRepos.length > 5" text @click="$router.push('/repositories')" class="view-more-btn">
+              {{ language === 'zh' ? '查看全部 →' : 'View All →' }}
+            </el-button>
           </div>
-        </el-card>
+        </div>
 
         <!-- 收藏仓库 -->
-        <el-card class="favorites-card">
-          <template #header>
-            <div class="card-header">
-              <span class="card-icon">⭐</span>
-              <span>{{ t('home.favorites', language) }}</span>
-            </div>
-          </template>
+        <div v-show="activeDataTab === 'favorites'" class="data-content">
           <div v-if="favorites.length === 0" class="empty-state-small">
             <span class="empty-icon">☆</span>
             <span>{{ t('home.noFavorites', language) }}</span>
           </div>
-          <div v-else class="item-list">
-            <div v-for="(item, index) in favorites.slice(0, 3)" :key="index" class="list-item">
-              <div class="item-info">
-                <span class="item-name">{{ item.name }}</span>
+          <div v-else class="data-list">
+            <div v-for="(item, index) in favorites.slice(0, 5)" :key="index" class="data-item">
+              <div class="data-item-info">
+                <span class="data-item-name">{{ item.name }}</span>
                 <el-tag v-if="item.language" size="small">{{ item.language }}</el-tag>
               </div>
-              <div class="item-actions">
+              <div class="data-item-actions">
                 <el-button size="small" :disabled="store.isAnalyzing" @click="handleFavorite(item.url)">
                   {{ t('home.viewDocs', language) }}
                 </el-button>
@@ -211,42 +206,36 @@
               </div>
             </div>
           </div>
-        </el-card>
+        </div>
 
         <!-- 历史记录 -->
-        <el-card class="history-card">
-          <template #header>
-            <div class="card-header">
-              <span class="card-icon">📜</span>
-              <span>{{ t('home.history', language) }}</span>
-              <el-button v-if="history.length > 0" text @click="handleClearHistory" class="clear-btn">
-                {{ t('home.clearHistory', language) }}
-              </el-button>
-            </div>
-          </template>
+        <div v-show="activeDataTab === 'history'" class="data-content">
           <div v-if="history.length === 0" class="empty-state-small">
             <span class="empty-icon">📋</span>
             <span>{{ t('home.noHistory', language) }}</span>
           </div>
-          <div v-else class="item-list">
-            <div v-for="(item, index) in history.slice(0, 3)" :key="index" class="list-item">
-              <div class="item-info">
-                <span class="item-name">{{ item.name }}</span>
-                <span class="item-date">{{ item.timestamp?.slice(0, 10) }}</span>
+          <div v-else class="data-list">
+            <div v-for="(item, index) in history.slice(0, 5)" :key="index" class="data-item">
+              <div class="data-item-info">
+                <span class="data-item-name">{{ item.name }}</span>
+                <span class="data-item-date">{{ item.timestamp?.slice(0, 10) }}</span>
               </div>
               <el-button size="small" :disabled="store.isAnalyzing" @click="handleHistory(item.url)">
                 {{ t('home.reAnalyze', language) }}
               </el-button>
             </div>
+            <el-button v-if="history.length > 0" text @click="handleClearHistory" class="clear-history-btn">
+              {{ t('home.clearHistory', language) }}
+            </el-button>
           </div>
-        </el-card>
-      </div>
+        </div>
+      </el-card>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAnalysisStore } from '@/stores/analysis'
 import { useSettingsStore } from '@/stores/settings'
@@ -261,10 +250,16 @@ const settingsStore = useSettingsStore()
 const { language } = storeToRefs(settingsStore)
 
 const repoUrl = ref('')
-const analysisMode = ref('fast')
 const history = ref([])
 const favorites = ref([])
 const savedRepos = ref([])
+const activeDataTab = ref('saved')
+
+const dataTabs = computed(() => [
+  { key: 'saved', name: '已分析', nameEn: 'Saved', icon: '📚', count: savedRepos.value.length },
+  { key: 'favorites', name: '收藏', nameEn: 'Favorites', icon: '⭐', count: favorites.value.length },
+  { key: 'history', name: '历史', nameEn: 'History', icon: '📜', count: history.value.length }
+])
 
 // 监听分析完成事件
 function handleAnalysisCompleted(event) {
@@ -304,12 +299,10 @@ const exampleRepos = [
 ]
 
 const stages = [
-  { key: 'validating', name: '正在验证仓库...', nameEn: 'Validating repository...' },
-  { key: 'getting_repo_info', name: '正在获取仓库信息...', nameEn: 'Fetching repo info...' },
-  { key: 'analyzing_structure', name: '正在分析目录结构...', nameEn: 'Analyzing structure...' },
-  { key: 'generating_learning_doc', name: '正在生成学习文档...', nameEn: 'Generating learning docs...' },
-  { key: 'generating_setup_guide', name: '正在生成启动指南...', nameEn: 'Generating setup guide...' },
-  { key: 'finalizing', name: '正在整理结果...', nameEn: 'Finalizing...' },
+  { key: 'starting', name: '正在启动...', nameEn: 'Starting...' },
+  { key: 'cloning', name: '正在克隆仓库...', nameEn: 'Cloning repository...' },
+  { key: 'getting_info', name: '正在获取仓库信息...', nameEn: 'Fetching repo info...' },
+  { key: 'generating', name: '正在生成文档...', nameEn: 'Generating documentation...' },
   { key: 'completed', name: '完成！', nameEn: 'Complete!' }
 ]
 
@@ -335,7 +328,7 @@ async function handleAnalyze() {
     url = 'https://' + url
   }
 
-  await store.start(url, analysisMode.value)
+  await store.start(url)
 
   if (store.isCompleted) {
     router.push('/docs')
@@ -348,7 +341,7 @@ function handleCancel() {
 
 async function handleExample(repo) {
   repoUrl.value = `https://github.com/${repo}`
-  await store.start(repoUrl.value, 'fast')
+  await store.start(repoUrl.value)
   if (store.isCompleted) {
     router.push('/docs')
   }
@@ -356,7 +349,7 @@ async function handleExample(repo) {
 
 async function handleHistory(url) {
   repoUrl.value = url
-  await store.start(url, 'fast')
+  await store.start(url)
   if (store.isCompleted) {
     router.push('/docs')
   }
@@ -364,7 +357,7 @@ async function handleHistory(url) {
 
 async function handleFavorite(url) {
   repoUrl.value = url
-  await store.start(url, 'fast')
+  await store.start(url)
   if (store.isCompleted) {
     router.push('/docs')
   }
@@ -378,6 +371,36 @@ async function handleUnfavorite(url) {
 async function handleClearHistory() {
   await clearHistory()
   loadHistory()
+}
+
+async function handleDeleteSavedRepo(url) {
+  try {
+    await ElMessageBox.confirm(
+      language.value === 'zh'
+        ? '确定要删除这个已分析的仓库吗？'
+        : 'Are you sure you want to delete this analyzed repository?',
+      language.value === 'zh' ? '确认删除' : 'Confirm Delete',
+      {
+        confirmButtonText: language.value === 'zh' ? '删除' : 'Delete',
+        cancelButtonText: language.value === 'zh' ? '取消' : 'Cancel',
+        type: 'warning'
+      }
+    )
+    const response = await fetch(`/api/repositories/${encodeURIComponent(url)}`, {
+      method: 'DELETE'
+    })
+    const data = await response.json()
+    if (data.success) {
+      savedRepos.value = savedRepos.value.filter(r => r.url !== url)
+      ElMessage.success(language.value === 'zh' ? '已删除' : 'Deleted')
+    } else {
+      ElMessage.error(language.value === 'zh' ? '删除失败' : 'Failed to delete')
+    }
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(language.value === 'zh' ? '删除失败' : 'Failed to delete')
+    }
+  }
 }
 
 async function loadHistory() {
@@ -438,6 +461,9 @@ function viewSavedRepo(item) {
     usage_tutorial: item.usage_tutorial,
     dev_guide: item.dev_guide,
     troubleshooting: item.troubleshooting,
+    // V3.1 代码图谱数据
+    code_graph: item.code_graph,
+    examples: item.examples,
     // 旧字段（兼容）
     learning_doc: item.learning_doc,
     setup_guide: item.setup_guide
@@ -640,75 +666,105 @@ onMounted(() => {
   margin-right: 6px;
 }
 
-/* 进度卡片 */
-.progress-card {
-  margin-bottom: 24px;
-  padding: 20px 24px !important;
+/* 进度条容器 - 紧凑设计 */
+.progress-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
 }
 
-.progress-header {
+.progress-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
 }
 
-.progress-title {
+.progress-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-color-secondary);
+}
+
+.progress-percent {
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-color);
-}
-
-.custom-progress {
-  margin-bottom: 16px;
-}
-
-.progress-message {
-  margin: 0 0 16px;
-  text-align: center;
   color: var(--primary-color);
-  font-size: 14px;
 }
 
-.stage-list {
+.compact-progress {
+  width: 100%;
+}
+
+.compact-progress :deep(.el-progress-bar__outer) {
+  height: 6px !important;
+  border-radius: 3px !important;
+}
+
+.compact-progress :deep(.el-progress-bar__inner) {
+  border-radius: 3px !important;
+}
+
+.stage-mini {
   display: flex;
+  gap: 16px;
   flex-wrap: wrap;
-  gap: 12px 24px;
-  margin-bottom: 8px;
 }
 
-.stage-item {
+.stage-mini-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 5px;
+  font-size: 12px;
   color: var(--text-color-muted);
-  transition: all var(--transition-normal);
+  transition: all var(--transition-fast);
 }
 
-.stage-dot {
-  width: 8px;
-  height: 8px;
+.stage-mini-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--border-color);
-  transition: all var(--transition-normal);
+  transition: all var(--transition-fast);
 }
 
-.stage-completed {
+.stage-mini-item.stage-completed {
   color: var(--success-color);
 }
 
-.stage-completed .stage-dot {
+.stage-mini-item.stage-completed .stage-mini-dot {
   background: var(--success-color);
-  box-shadow: 0 0 8px rgba(107, 142, 107, 0.4);
 }
 
-.stage-current {
+.stage-mini-item.stage-current {
   color: var(--primary-color);
 }
 
-.stage-current .stage-dot {
+.stage-mini-item.stage-current .stage-mini-dot {
   background: var(--primary-color);
   animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.cancel-btn {
+  font-size: 18px;
+  padding: 4px 8px;
+  color: var(--text-color-muted);
+}
+
+.cancel-btn:hover {
+  color: var(--danger-color);
 }
 
 @keyframes pulse-dot {
@@ -779,38 +835,111 @@ onMounted(() => {
   color: var(--text-color-muted);
 }
 
-/* 数据卡片区域 */
-.data-cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-@media (max-width: 768px) {
-  .data-cards {
-    grid-template-columns: 1fr;
-  }
-}
-
-.saved-repos-card,
-.favorites-card,
-.history-card {
+/* 数据标签页卡片 */
+.data-tabs-card {
   padding: 0 !important;
 }
 
-.card-header {
+.data-tabs-header {
+  display: flex;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.data-tab-item {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  color: var(--text-color-secondary);
+  font-size: 14px;
+  border: 1px solid transparent;
 }
 
-.card-icon {
-  font-size: 16px;
+.data-tab-item:hover {
+  background: var(--bg-warm);
+  color: var(--text-color);
 }
 
-.view-all-btn,
-.clear-btn {
-  margin-left: auto;
+.data-tab-item.is-active {
+  background: var(--bg-warm);
+  color: var(--primary-color);
+  border-color: var(--border-light);
+}
+
+.data-tab-item .tab-icon {
+  font-size: 15px;
+}
+
+.data-tab-item .tab-count {
+  font-size: 12px;
+  padding: 2px 8px;
+  background: var(--border-light);
+  border-radius: 10px;
+  color: var(--text-color-muted);
+}
+
+.data-tab-item.is-active .tab-count {
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.data-content {
+  padding: 8px 16px 16px;
+}
+
+.data-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.data-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-warm);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+}
+
+.data-item:hover {
+  transform: translateX(4px);
+  box-shadow: var(--shadow-sm);
+}
+
+.data-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.data-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.data-item-date {
+  font-size: 12px;
+  color: var(--text-color-muted);
+}
+
+.data-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.view-more-btn,
+.clear-history-btn {
+  margin-top: 8px;
+  color: var(--primary-color);
   font-size: 13px;
 }
 
@@ -827,46 +956,6 @@ onMounted(() => {
 .empty-icon {
   font-size: 24px;
   opacity: 0.4;
-}
-
-.item-list {
-  padding: 8px 16px 16px;
-}
-
-.list-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.list-item:last-child {
-  border-bottom: none;
-}
-
-.item-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.item-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-color);
-}
-
-.item-date {
-  font-size: 12px;
-  color: var(--text-color-muted);
-}
-
-.item-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 /* 过渡动画 */

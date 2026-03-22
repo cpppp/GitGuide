@@ -67,93 +67,70 @@
         </div>
       </el-card>
 
-      <!-- 文档标签页 -->
-      <el-card class="docs-card">
-        <el-tabs v-model="activeTab" class="doc-tabs" :before-leave="handleTabChange">
-          <el-tab-pane name="quick_start">
-            <template #label>
-              <span class="tab-label"><span class="tab-icon">⚡</span> {{ language === 'zh' ? '快速入门' : 'Quick Start' }}</span>
-            </template>
-            <div class="markdown-content" v-html="renderMarkdown(store.result?.quick_start || store.result?.learning_doc || '')"></div>
-          </el-tab-pane>
-          <el-tab-pane name="overview">
-            <template #label>
-              <span class="tab-label"><span class="tab-icon">📋</span> {{ language === 'zh' ? '项目概览' : 'Overview' }}</span>
-            </template>
-            <div class="markdown-content" v-html="renderMarkdown(store.result?.overview || '')"></div>
-          </el-tab-pane>
-          <el-tab-pane name="architecture">
-            <template #label>
-              <span class="tab-label"><span class="tab-icon">🏛</span> {{ language === 'zh' ? '架构设计' : 'Architecture' }}</span>
-            </template>
-            <div class="markdown-content" v-html="renderMarkdown(store.result?.architecture || '')"></div>
-          </el-tab-pane>
-          <el-tab-pane name="install_guide">
-            <template #label>
-              <span class="tab-label"><span class="tab-icon">⚙</span> {{ language === 'zh' ? '安装部署' : 'Install Guide' }}</span>
-            </template>
-            <div class="markdown-content" v-html="renderMarkdown(store.result?.install_guide || store.result?.setup_guide || '')"></div>
-          </el-tab-pane>
-          <el-tab-pane name="usage_tutorial">
-            <template #label>
-              <span class="tab-label"><span class="tab-icon">📖</span> {{ language === 'zh' ? '使用教程' : 'Tutorial' }}</span>
-            </template>
-            <div class="markdown-content" v-html="renderMarkdown(store.result?.usage_tutorial || '')"></div>
-          </el-tab-pane>
-          <el-tab-pane name="dev_guide">
-            <template #label>
-              <span class="tab-label"><span class="tab-icon">🔧</span> {{ language === 'zh' ? '开发指南' : 'Dev Guide' }}</span>
-            </template>
-            <div class="markdown-content" v-html="renderMarkdown(store.result?.dev_guide || '')"></div>
-          </el-tab-pane>
-          <el-tab-pane name="troubleshooting">
-            <template #label>
-              <span class="tab-label"><span class="tab-icon">🔍</span> {{ language === 'zh' ? '故障排查' : 'Troubleshoot' }}</span>
-            </template>
-            <div class="markdown-content" v-html="renderMarkdown(store.result?.troubleshooting || '')"></div>
-          </el-tab-pane>
-          <el-tab-pane name="atlas">
-            <template #label>
-              <span class="tab-label"><span class="tab-icon">🗺</span> {{ language === 'zh' ? '代码图谱' : 'Code Atlas' }}</span>
-            </template>
-            <CodeAtlas :result="store.result" :loading="false" />
-          </el-tab-pane>
-          <el-tab-pane name="examples">
-            <template #label>
-              <span class="tab-label"><span class="tab-icon">💡</span> {{ language === 'zh' ? '示例代码' : 'Examples' }}</span>
-            </template>
-            <ExampleCode :result="store.result" :loading="false" />
-          </el-tab-pane>
-        </el-tabs>
-
-        <!-- 底部操作栏 -->
-        <div class="action-bar">
-          <el-button type="primary" class="action-btn" @click="$router.push('/chat')">
-            <span class="btn-icon">💬</span>
-            {{ language === 'zh' ? 'AI 问答' : 'AI Chat' }}
-          </el-button>
-
-          <el-dropdown @command="handleExport" trigger="click">
-            <el-button class="action-btn">
-              <span class="btn-icon">📥</span>
-              {{ language === 'zh' ? '导出文档' : 'Export' }}
+      <!-- 文档内容区域 - 左侧导航 + 右侧内容 -->
+      <div class="docs-layout">
+        <!-- 左侧导航栏 -->
+        <aside class="docs-sidebar">
+          <div class="sidebar-header">
+            <span class="sidebar-title">{{ language === 'zh' ? '文档目录' : 'Contents' }}</span>
+          </div>
+          <nav class="sidebar-nav">
+            <div
+              v-for="item in docMenuItems"
+              :key="item.name"
+              class="nav-section"
+            >
+              <div
+                class="nav-item"
+                :class="{ 'is-active': activeTab === item.name }"
+                @click="activeTab = item.name"
+              >
+                <span class="nav-icon">{{ item.icon }}</span>
+                <span class="nav-text">{{ language === 'zh' ? item.label : item.labelEn }}</span>
+              </div>
+            </div>
+          </nav>
+          <div class="sidebar-footer">
+            <el-button type="primary" class="chat-btn" @click="$router.push('/chat')">
+              <span class="btn-icon">💬</span>
+              {{ language === 'zh' ? 'AI 问答' : 'AI Chat' }}
             </el-button>
-            <template #dropdown>
-              <el-dropdown-menu class="export-menu">
-                <el-dropdown-item command="markdown">
-                  <span class="export-icon">📄</span> Markdown
-                </el-dropdown-item>
-                <el-dropdown-item command="html">
-                  <span class="export-icon">🌐</span> HTML
-                </el-dropdown-item>
-                <el-dropdown-item command="pdf">
-                  <span class="export-icon">📑</span> PDF
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </el-card>
+          </div>
+        </aside>
+
+        <!-- 右侧文档内容 -->
+         <main class="docs-main">
+           <el-card class="doc-content-card">
+             <div class="doc-header">
+               <h1 class="doc-title">
+                 <span class="doc-title-icon">{{ currentDocIcon }}</span>
+                 {{ currentDocTitle }}
+               </h1>
+             </div>
+             <div v-if="!isSpecialTab" class="markdown-content" v-html="renderMarkdown(currentDocContent)"></div>
+             <div v-else-if="activeTab === 'atlas'" class="component-content">
+               <CodeAtlas :result="store.result" :loading="false" />
+             </div>
+             <div v-else-if="activeTab === 'examples'" class="component-content">
+               <ExampleCode :result="store.result" :loading="false" />
+             </div>
+           </el-card>
+
+          <!-- 导出操作栏 -->
+          <div class="export-bar">
+            <span class="export-label">{{ language === 'zh' ? '导出文档' : 'Export' }}:</span>
+            <el-button size="small" @click="handleExport('markdown')">
+              <span class="export-icon">📄</span> Markdown
+            </el-button>
+            <el-button size="small" @click="handleExport('html')">
+              <span class="export-icon">🌐</span> HTML
+            </el-button>
+            <el-button size="small" @click="handleExport('pdf')">
+              <span class="export-icon">📑</span> PDF
+            </el-button>
+          </div>
+        </main>
+      </div>
     </div>
   </div>
 </template>
@@ -178,6 +155,59 @@ const settingsStore = useSettingsStore()
 const { language } = storeToRefs(settingsStore)
 
 const activeTab = ref('quick_start')
+
+const docMenuItems = [
+  { name: 'quick_start', label: '快速入门', labelEn: 'Quick Start', icon: '⚡' },
+  { name: 'overview', label: '项目概览', labelEn: 'Overview', icon: '📋' },
+  { name: 'architecture', label: '架构设计', labelEn: 'Architecture', icon: '🏛' },
+  { name: 'install_guide', label: '安装部署', labelEn: 'Install Guide', icon: '⚙' },
+  { name: 'usage_tutorial', label: '使用教程', labelEn: 'Tutorial', icon: '📖' },
+  { name: 'dev_guide', label: '开发指南', labelEn: 'Dev Guide', icon: '🔧' },
+  { name: 'troubleshooting', label: '故障排查', labelEn: 'Troubleshoot', icon: '🔍' },
+  { name: 'atlas', label: '代码图谱', labelEn: 'Code Atlas', icon: '🗺' },
+  { name: 'examples', label: '示例代码', labelEn: 'Examples', icon: '💡' }
+]
+
+const currentDocIcon = computed(() => {
+  const item = docMenuItems.find(m => m.name === activeTab.value)
+  return item?.icon || '📄'
+})
+
+const currentDocTitle = computed(() => {
+  const item = docMenuItems.find(m => m.name === activeTab.value)
+  return language.value === 'zh' ? item?.label : item?.labelEn
+})
+
+const currentDocContent = computed(() => {
+  const result = store.result
+  if (!result) return ''
+
+  switch (activeTab.value) {
+    case 'quick_start':
+      return result.quick_start || result.learning_doc || ''
+    case 'overview':
+      return result.overview || ''
+    case 'architecture':
+      return result.architecture || ''
+    case 'install_guide':
+      return result.install_guide || result.setup_guide || ''
+    case 'usage_tutorial':
+      return result.usage_tutorial || ''
+    case 'dev_guide':
+      return result.dev_guide || ''
+    case 'troubleshooting':
+      return result.troubleshooting || ''
+    case 'atlas':
+    case 'examples':
+      return '' // 这些使用组件渲染
+    default:
+      return ''
+  }
+})
+
+const isSpecialTab = computed(() => {
+  return activeTab.value === 'atlas' || activeTab.value === 'examples'
+})
 const favorites = ref([])
 
 function handleTabChange(activeName) {
@@ -262,8 +292,6 @@ onMounted(() => {
 
 <style scoped>
 .docs {
-  max-width: 1000px;
-  margin: 0 auto;
   padding: 20px;
 }
 
@@ -410,42 +438,130 @@ onMounted(() => {
   font-size: 16px;
 }
 
-/* 文档卡片 */
-.docs-card {
+/* 文档布局 - 左侧导航 + 右侧内容 */
+.docs-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* 左侧导航栏 */
+.docs-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: sticky;
+  top: 20px;
+}
+
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-warm);
+}
+
+.sidebar-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.sidebar-nav {
+  padding: 12px 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  color: var(--text-color-secondary);
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.nav-item:last-child {
+  margin-bottom: 0;
+}
+
+.nav-item:hover {
+  background: var(--bg-warm);
+  color: var(--text-color);
+}
+
+.nav-item.is-active {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: #fff;
+}
+
+.nav-item.is-active .nav-icon {
+  opacity: 1;
+}
+
+.nav-icon {
+  font-size: 16px;
+  opacity: 0.8;
+}
+
+.nav-text {
+  font-weight: 500;
+}
+
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-warm);
+}
+
+.chat-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 右侧文档内容 */
+.docs-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-content-card {
   padding: 0 !important;
   overflow: hidden;
 }
 
-/* 标签页样式 */
-.doc-tabs {
-  padding: 0 24px;
+.doc-header {
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-warm);
 }
 
-.doc-tabs :deep(.el-tabs__header) {
+.doc-title {
+  font-family: 'Noto Serif SC', 'Crimson Pro', Georgia, serif;
+  font-size: 1.4em;
+  font-weight: 600;
+  color: var(--text-color);
   margin: 0;
-  padding: 0;
-}
-
-.doc-tabs :deep(.el-tabs__nav-wrap::after) {
-  height: 1px;
-  background: var(--border-light);
-}
-
-.doc-tabs :deep(.el-tabs__item) {
-  height: 56px;
-  line-height: 56px;
-  padding: 0 18px;
-  font-size: 14px;
-}
-
-.tab-label {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
 }
 
-.tab-icon {
-  font-size: 15px;
+.doc-title-icon {
+  font-size: 24px;
+}
+
+.component-content {
+  padding: 20px;
 }
 
 /* Markdown 内容区 */
@@ -458,40 +574,40 @@ onMounted(() => {
 
 .markdown-content :deep(h1) {
   font-family: 'Noto Serif SC', 'Crimson Pro', Georgia, serif;
-  font-size: 1.8em;
+  font-size: 1.6em;
   font-weight: 600;
   color: var(--text-color);
-  margin: 0 0 24px;
-  padding-bottom: 14px;
+  margin: 0 0 20px;
+  padding-bottom: 12px;
   border-bottom: 2px solid var(--border-light);
 }
 
 .markdown-content :deep(h2) {
   font-family: 'Noto Serif SC', Georgia, serif;
-  font-size: 1.4em;
+  font-size: 1.3em;
   font-weight: 600;
   color: var(--text-color);
-  margin: 32px 0 16px;
+  margin: 28px 0 14px;
   padding-left: 12px;
   border-left: 3px solid var(--accent-color);
 }
 
 .markdown-content :deep(h3) {
-  font-size: 1.15em;
+  font-size: 1.1em;
   font-weight: 600;
   color: var(--text-color);
-  margin: 24px 0 12px;
+  margin: 20px 0 10px;
 }
 
 .markdown-content :deep(h4) {
   font-size: 1em;
   font-weight: 600;
   color: var(--text-color-secondary);
-  margin: 20px 0 10px;
+  margin: 18px 0 8px;
 }
 
 .markdown-content :deep(p) {
-  margin: 14px 0;
+  margin: 12px 0;
   color: var(--text-color);
 }
 
@@ -510,10 +626,10 @@ onMounted(() => {
 
 .markdown-content :deep(pre) {
   background: var(--bg-warm);
-  padding: 18px 20px;
+  padding: 16px 18px;
   border-radius: var(--radius-md);
   overflow-x: auto;
-  margin: 16px 0;
+  margin: 14px 0;
   border: 1px solid var(--border-light);
 }
 
@@ -532,7 +648,7 @@ onMounted(() => {
 }
 
 .markdown-content :deep(li) {
-  margin: 8px 0;
+  margin: 6px 0;
   color: var(--text-color);
 }
 
@@ -541,8 +657,8 @@ onMounted(() => {
 }
 
 .markdown-content :deep(blockquote) {
-  margin: 16px 0;
-  padding: 14px 20px;
+  margin: 14px 0;
+  padding: 12px 18px;
   background: var(--bg-warm);
   border-left: 4px solid var(--accent-color);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
@@ -563,13 +679,13 @@ onMounted(() => {
 .markdown-content :deep(table) {
   width: 100%;
   border-collapse: collapse;
-  margin: 16px 0;
+  margin: 14px 0;
   font-size: 14px;
 }
 
 .markdown-content :deep(th),
 .markdown-content :deep(td) {
-  padding: 12px 16px;
+  padding: 10px 14px;
   border: 1px solid var(--border-light);
   text-align: left;
 }
@@ -588,36 +704,54 @@ onMounted(() => {
   border: none;
   height: 1px;
   background: var(--border-light);
-  margin: 24px 0;
+  margin: 20px 0;
 }
 
-/* 操作栏 */
-.action-bar {
+/* 导出操作栏 */
+.export-bar {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 24px;
-  background: var(--bg-warm);
-  border-top: 1px solid var(--border-light);
+  margin-top: 16px;
+  padding: 16px 20px;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
 }
 
-.action-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 42px;
-}
-
-.btn-icon {
-  font-size: 16px;
-}
-
-/* 导出菜单 */
-.export-menu {
-  min-width: 140px;
+.export-label {
+  font-size: 14px;
+  color: var(--text-color-secondary);
+  font-weight: 500;
 }
 
 .export-icon {
-  margin-right: 8px;
+  margin-right: 4px;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .docs-layout {
+    flex-direction: column;
+  }
+
+  .docs-sidebar {
+    width: 100%;
+    position: static;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 12px;
+  }
+
+  .nav-item {
+    margin-bottom: 0;
+    flex: 1;
+    min-width: calc(50% - 4px);
+    justify-content: center;
+  }
 }
 </style>

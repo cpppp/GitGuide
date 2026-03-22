@@ -3,19 +3,11 @@ Pydantic 数据模型
 """
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-from enum import Enum
-
-
-class AnalysisMode(str, Enum):
-    """分析模式"""
-    FAST = "fast"
-    DETAILED = "detailed"
 
 
 class AnalyzeRequest(BaseModel):
     """分析请求"""
     repo_url: str = Field(..., description="GitHub 仓库 URL")
-    mode: AnalysisMode = Field(default=AnalysisMode.FAST, description="分析模式")
 
 
 class AnalyzeResponse(BaseModel):

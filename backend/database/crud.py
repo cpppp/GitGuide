@@ -42,6 +42,12 @@ class RepositoryCRUD:
             return True
         return False
 
+    @staticmethod
+    def delete_all(db: Session) -> int:
+        deleted = db.query(Repository).delete()
+        db.commit()
+        return deleted
+
 class ChatMessageCRUD:
     @staticmethod
     def create(db: Session, repo_id: int, role: str, content: str) -> ChatMessage:

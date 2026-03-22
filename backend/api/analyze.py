@@ -27,7 +27,7 @@ ws_manager: WebSocketManager = None
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def start_analyze(request: AnalyzeRequest):
     """
-    启动仓库分析
+    启动仓库分析（仅使用快速模式）
     """
     # 验证 URL
     validation = validate_github_url(request.repo_url)
@@ -38,10 +38,10 @@ async def start_analyze(request: AnalyzeRequest):
     job_id = str(uuid.uuid4())
 
     # 创建任务
-    task_store.create_task(job_id, request.repo_url, request.mode.value)
+    task_store.create_task(job_id, request.repo_url)
 
     # 异步执行分析（不阻塞）
-    asyncio.create_task(run_analysis_async(job_id, request.repo_url, request.mode.value))
+    asyncio.create_task(run_analysis_async(job_id, request.repo_url))
 
     return AnalyzeResponse(job_id=job_id, status="pending")
 
@@ -144,9 +144,9 @@ async def get_favorites(db = Depends(get_db)):
 @router.post("/favorites")
 async def add_favorite(repo_url: str, db = Depends(get_db)):
     """添加收藏"""
-    from tools.github_tools import get_repo_info
-    
-    repo_info = get_repo_info(repo_url)
+    from tools.github_tools import github_tools
+
+    repo_info = github_tools.get_repo_info(repo_url)
     if isinstance(repo_info, dict) and "error" not in repo_info:
         FavoriteCRUD.add_by_url(db, repo_url, repo_info)
         return {"success": True}
@@ -161,8 +161,8 @@ async def remove_favorite(repo_url: str, db = Depends(get_db)):
 
 
 # 异步分析任务
-async def run_analysis_async(job_id: str, repo_url: str, mode: str):
-    """异步执行分析任务"""
+async def run_analysis_async(job_id: str, repo_url: str):
+    """异步执行分析任务（仅使用快速模式）"""
     # 使用模块级别的 ws_manager（由 main.py 注入）
     global ws_manager
     if ws_manager is None:
@@ -175,11 +175,6 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
         # 设置取消检查器
         from agents.orchestrator import set_cancelled_checker
         set_cancelled_checker(lambda: task_store.is_cancelled(job_id))
-
-        # 定义进度回调（使用 asyncio 确保在事件循环中执行）
-        async def progress_callback(stage_key: str, progress: int, message: str):
-            task_store.update_progress(job_id, stage_key, progress, message)
-            await ws_manager.send_progress(job_id, stage_key, progress, message)
 
         # 阶段 1: 验证仓库
         task_store.update_progress(job_id, "validating", 10, "正在验证仓库...")
@@ -204,79 +199,38 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
         import os
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-        from agents.orchestrator import run_fast, run_with_progress
+        from agents.orchestrator import run_fast
 
-        if mode == "fast":
-            # 定义进度回调函数（线程安全版本）
-            def fast_progress_callback(stage_key, progress_value, message):
-                task_store.update_progress(job_id, stage_key, progress_value, message)
-                print(f"[PROGRESS] {stage_key}: {progress_value}% - {message}")
-                # 注意：WebSocket 发送只在主线程进行，这里只更新 TaskStore
+        # 定义进度回调函数（线程安全版本）
+        def fast_progress_callback(stage_key, progress_value, message):
+            task_store.update_progress(job_id, stage_key, progress_value, message)
+            print(f"[PROGRESS] {stage_key}: {progress_value}% - {message}")
 
-            # 使用 run_fast 带进度回调
-            loop = asyncio.get_event_loop()
-            try:
-                result = await asyncio.wait_for(
-                    loop.run_in_executor(None, run_fast, repo_url, fast_progress_callback),
-                    timeout=TASK_TIMEOUT
-                )
-            except asyncio.TimeoutError:
-                result = {"success": False, "error": f"任务超时（{TASK_TIMEOUT}秒），请重试或使用更小的仓库"}
-
-            # 发送后续进度
-            task_store.update_progress(job_id, "generating_setup_guide", 85, "正在生成启动指南...")
-            await ws_manager.send_progress(job_id, "generating_setup_guide", 85, "正在生成启动指南...")
-
-            task_store.update_progress(job_id, "finalizing", 95, "正在整理结果...")
-            await ws_manager.send_progress(job_id, "finalizing", 95, "正在整理结果...")
-        else:
-            # 详细模式
-            task_store.update_progress(job_id, "analyzing_structure", 40, "正在分析目录结构...")
-            await ws_manager.send_progress(job_id, "analyzing_structure", 40, "正在分析目录结构...")
-
-            if task_store.is_cancelled(job_id):
-                await ws_manager.send_cancelled(job_id)
-                return
-
-            await asyncio.sleep(0.5)
-
-            task_store.update_progress(job_id, "generating_learning_doc", 50, "正在生成学习文档...")
-            await ws_manager.send_progress(job_id, "generating_learning_doc", 50, "正在生成学习文档...")
-
-            if task_store.is_cancelled(job_id):
-                await ws_manager.send_cancelled(job_id)
-                return
-
-            # 定义进度回调函数（线程安全版本）
-            def progress_callback(stage_key, progress_value, message):
-                task_store.update_progress(job_id, stage_key, progress_value, message)
-                print(f"[PROGRESS] {stage_key}: {progress_value}% - {message}")
-                # 注意：WebSocket 发送只在主线程进行，这里只更新 TaskStore
-
-            # 调用详细分析
-            loop = asyncio.get_event_loop()
-            try:
-                result = await asyncio.wait_for(
-                    loop.run_in_executor(None, run_with_progress, repo_url, progress_callback),
-                    timeout=TASK_TIMEOUT
-                )
-            except asyncio.TimeoutError:
-                result = {"success": False, "error": f"任务超时（{TASK_TIMEOUT}秒），请重试或使用更小的仓库"}
+        # 使用快速模式
+        loop = asyncio.get_event_loop()
+        try:
+            result = await asyncio.wait_for(
+                loop.run_in_executor(None, run_fast, repo_url, fast_progress_callback),
+                timeout=TASK_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            result = {"success": False, "error": f"任务超时（{TASK_TIMEOUT}秒），请重试或使用更小的仓库"}
 
         # 检查取消
         if task_store.is_cancelled(job_id):
             await ws_manager.send_cancelled(job_id)
             return
 
+        # 检查结果
         if result.get("success"):
             # 阶段 3: 整理结果
             task_store.update_progress(job_id, "finalizing", 95, "正在整理结果...")
             await ws_manager.send_progress(job_id, "finalizing", 95, "正在整理结果...")
 
-            # 构建结果对象（统一发送给 TaskStore、WebSocket 和前端）
+            # 构建结果对象
             result_data = {
                 "repo_url": result["repo_url"],
-                # V3.0 文档（兼容旧字段）
+                # V3.0 文档
                 "quick_start": result.get("quick_start", result.get("learning_doc", "")),
                 "overview": result.get("overview", ""),
                 "architecture": result.get("architecture", ""),
@@ -285,19 +239,19 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
                 "usage_tutorial": result.get("usage_tutorial", ""),
                 "dev_guide": result.get("dev_guide", ""),
                 "troubleshooting": result.get("troubleshooting", ""),
-                # V3.1 代码图谱数据
+                # 代码图谱数据
                 "code_graph": result.get("code_graph", {}),
                 "examples": result.get("examples", []),
-                # 旧字段（兼容）
+                # 兼容字段
                 "learning_doc": result.get("learning_doc", ""),
                 "setup_guide": result.get("setup_guide", ""),
                 "repo_info": result.get("repo_info", {})
             }
 
-            # 保存结果到 TaskStore（统一的数据结构）
+            # 保存结果到 TaskStore
             task_store.set_result(job_id, result_data)
 
-            # 保存到数据库 - 支持7种文档
+            # 保存到数据库
             from backend.database.config import SessionLocal
             from backend.database.crud import RepositoryCRUD
             db = SessionLocal()
@@ -311,19 +265,15 @@ async def run_analysis_async(job_id: str, repo_url: str, mode: str):
                     "description": repo_info.get("description", ""),
                     "language": repo_info.get("language", ""),
                     "stars": repo_info.get("stargazers_count", 0) or repo_info.get("stars", 0),
-                    # V3.0 文档
                     "quick_start": result.get("quick_start", ""),
                     "overview_doc": result.get("overview", ""),
                     "architecture_doc": result.get("architecture", ""),
                     "install_guide": result.get("install_guide", ""),
-                    # V3.1 新文档
                     "usage_tutorial": result.get("usage_tutorial", ""),
                     "dev_guide": result.get("dev_guide", ""),
                     "troubleshooting": result.get("troubleshooting", ""),
-                    # V3.1 代码图谱数据
                     "code_graph": json.dumps(result.get("code_graph", {}), ensure_ascii=False),
                     "examples": json.dumps(result.get("examples", []), ensure_ascii=False),
-                    # 旧字段（兼容）
                     "learning_doc": result.get("learning_doc", ""),
                     "setup_guide": result.get("setup_guide", ""),
                     "analysis_result": str(result.get("repo_info", {}))

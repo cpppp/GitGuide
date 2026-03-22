@@ -112,12 +112,11 @@ class TaskStore:
     def __init__(self):
         self.tasks: Dict[str, dict] = {}
 
-    def create_task(self, job_id: str, repo_url: str, mode: str):
+    def create_task(self, job_id: str, repo_url: str):
         """创建任务"""
         self.tasks[job_id] = {
             "job_id": job_id,
             "repo_url": repo_url,
-            "mode": mode,
             "status": "pending",
             "progress": 0,
             "progress_message": "",

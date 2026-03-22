@@ -1,6 +1,6 @@
-"""DevGuideGenerator - 开发指南文档生成器
+"""DevGuideGenerator - Development Guide Document Generator
 
-负责生成开发指南文档，包含目录结构、代码规范、测试指南、贡献指南
+Generates development guide documentation, including directory structure, code standards, testing guide, and contribution guide
 """
 
 from typing import Dict, Any, List
@@ -8,22 +8,22 @@ from agents.generators.base_generator import BaseGenerator
 
 
 class DevGuideGenerator(BaseGenerator):
-    """开发指南文档生成器 - 基于LLM生成高质量文档"""
+    """Development Guide Document Generator - High-quality documentation via LLM"""
 
     def __init__(self):
         super().__init__("DevGuideGenerator", "dev_guide")
 
     def generate(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """生成开发指南文档"""
+        """Generate development guide document"""
         repo_url = context.get("repo_url", "")
         repo_path = context.get("repo_path", "")
         analysis_results = context.get("analysis_results", {})
 
         try:
             gen_context = self._get_shared_context(context)
-            
+
             content = self.generate_with_llm(gen_context, repo_path, analysis_results)
-            
+
             if not content:
                 content = self.generate_fallback(gen_context, repo_path, analysis_results)
 
@@ -46,81 +46,82 @@ class DevGuideGenerator(BaseGenerator):
             }
 
     def generate_with_llm(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
-        """使用LLM生成开发指南文档"""
-        
-        prompt = f"""你是一个技术文档专家。请根据以下项目信息，生成一份高质量的开发指南文档。
+        """Generate development guide document using LLM"""
 
-## 项目信息
-- 语言: {context.get('language', 'Unknown')}
-- 项目类型: {context.get('project_type', 'Unknown')}
-- 框架: {', '.join(context.get('frameworks', [])) or '无'}
-- 构建系统: {context.get('build_system', 'Unknown')}
+        prompt = f"""You are a technical documentation expert. Based on the following project information, generate a high-quality development guide document.
 
-## 目录结构
+## Project Information
+- Language: {context.get('language', 'Unknown')}
+- Project Type: {context.get('project_type', 'Unknown')}
+- Frameworks: {', '.join(context.get('frameworks', [])) or 'None'}
+- Build System: {context.get('build_system', 'Unknown')}
+
+## Directory Structure
 ```
-{context.get('directory_tree', '无')}
+{context.get('directory_tree', 'None')}
 ```
 
-## README 内容
-{context.get('readme', '无README')[:1500]}
+## README Content
+{context.get('readme', 'No README')[:1500]}
 
-## 主要依赖
-{chr(10).join(context.get('requirements', [])[:15]) or '无'}
+## Main Dependencies
+{chr(10).join(context.get('requirements', [])[:15]) or 'None'}
 
-## 主要源文件
+## Main Source Files
 {self._format_main_files(context.get('main_files', []))}
 
 ---
 
-请生成一份开发指南文档，包含以下内容：
-1. **项目结构** - 详细说明目录结构和各模块职责
-2. **代码规范** - 编码风格、命名规范、注释规范
-3. **开发环境** - 开发环境配置、IDE推荐
-4. **测试指南** - 如何运行测试、编写测试
-5. **贡献指南** - 如何提交PR、代码审查流程
-6. **发布流程** - 版本管理、发布步骤
+Please generate a development guide document containing:
 
-要求：
-- 使用Markdown格式
-- 内容要基于实际项目信息
-- 代码示例要完整
+1. **Project Structure** - Detailed explanation of directory structure and module responsibilities
+2. **Code Standards** - Coding style, naming conventions, comment standards
+3. **Development Environment** - Development environment configuration, recommended IDEs
+4. **Testing Guide** - How to run tests, how to write tests
+5. **Contributing Guide** - How to submit PRs, code review process
+6. **Release Process** - Version management, release steps
+
+Requirements:
+- Use Markdown format
+- Content should be based on actual project information
+- Code examples should be complete
 """
 
         return self._call_llm(prompt)
 
     def generate_fallback(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
-        """降级生成 - 当LLM不可用时使用模板"""
+        """Fallback generation - Template when LLM is unavailable"""
         lines = []
 
-        lines.append("# 开发指南")
+        lines.append("# Development Guide")
         lines.append("")
 
-        lines.append("## 项目结构")
+        lines.append("## Project Structure")
         structure = self._generate_structure(context)
         lines.extend(structure)
         lines.append("")
 
-        lines.append("## 代码规范")
+        lines.append("## Code Standards")
         code_style = self._generate_code_style(context)
         lines.extend(code_style)
         lines.append("")
 
-        lines.append("## 开发环境")
+        lines.append("## Development Environment")
         dev_env = self._generate_dev_env(context)
         lines.extend(dev_env)
         lines.append("")
 
-        lines.append("## 测试指南")
+        lines.append("## Testing Guide")
         testing = self._generate_testing(context)
         lines.extend(testing)
 
         return "\n".join(lines)
 
     def _format_main_files(self, main_files: List[Dict[str, str]]) -> str:
-        """格式化主要源文件"""
+        """Format main source files"""
         if not main_files:
-            return "无"
-        
+            return "None"
+
         result = []
         for f in main_files[:2]:
             result.append(f"### {f['name']}")
@@ -130,97 +131,97 @@ class DevGuideGenerator(BaseGenerator):
         return '\n'.join(result)
 
     def _generate_structure(self, context: Dict[str, Any]) -> List[str]:
-        """生成项目结构说明"""
+        """Generate project structure description"""
         lines = []
         directory_tree = context.get("directory_tree", "")
 
         lines.append("```")
-        lines.append(directory_tree[:1000] if directory_tree else "项目目录结构")
+        lines.append(directory_tree[:1000] if directory_tree else "Project directory structure")
         lines.append("```")
         lines.append("")
-        lines.append("### 主要目录说明")
-        lines.append("- `src/`: 源代码目录")
-        lines.append("- `tests/`: 测试代码目录")
-        lines.append("- `docs/`: 文档目录")
-        lines.append("- `config/`: 配置文件目录")
+        lines.append("### Main Directory Description")
+        lines.append("- `src/`: Source code directory")
+        lines.append("- `tests/`: Test code directory")
+        lines.append("- `docs/`: Documentation directory")
+        lines.append("- `config/`: Configuration files directory")
 
         return lines
 
     def _generate_code_style(self, context: Dict[str, Any]) -> List[str]:
-        """生成代码规范说明"""
+        """Generate code standards description"""
         lines = []
         language = context.get("language", "")
 
         if language == "Python":
-            lines.append("### Python 代码规范")
-            lines.append("- 遵循 PEP 8 编码规范")
-            lines.append("- 使用 4 空格缩进")
-            lines.append("- 函数和变量使用 snake_case")
-            lines.append("- 类使用 PascalCase")
-            lines.append("- 使用类型注解")
+            lines.append("### Python Code Standards")
+            lines.append("- Follow PEP 8 coding standards")
+            lines.append("- Use 4-space indentation")
+            lines.append("- Functions and variables use snake_case")
+            lines.append("- Classes use PascalCase")
+            lines.append("- Use type annotations")
         elif language in ["JavaScript", "TypeScript"]:
-            lines.append("### JavaScript/TypeScript 代码规范")
-            lines.append("- 使用 ESLint 进行代码检查")
-            lines.append("- 使用 2 空格缩进")
-            lines.append("- 变量使用 camelCase")
-            lines.append("- 组件使用 PascalCase")
-            lines.append("- 优先使用 const/let，避免 var")
+            lines.append("### JavaScript/TypeScript Code Standards")
+            lines.append("- Use ESLint for linting")
+            lines.append("- Use 2-space indentation")
+            lines.append("- Variables use camelCase")
+            lines.append("- Components use PascalCase")
+            lines.append("- Prefer const/let, avoid var")
 
         return lines
 
     def _generate_dev_env(self, context: Dict[str, Any]) -> List[str]:
-        """生成开发环境说明"""
+        """Generate development environment description"""
         lines = []
         language = context.get("language", "")
 
-        lines.append("### 推荐工具")
+        lines.append("### Recommended Tools")
         if language == "Python":
             lines.append("- IDE: VS Code / PyCharm")
-            lines.append("- 虚拟环境: venv / conda")
-            lines.append("- 包管理: pip")
+            lines.append("- Virtual environment: venv / conda")
+            lines.append("- Package management: pip")
         elif language in ["JavaScript", "TypeScript"]:
             lines.append("- IDE: VS Code")
-            lines.append("- 包管理: npm / yarn")
-            lines.append("- 调试: Chrome DevTools")
+            lines.append("- Package management: npm / yarn")
+            lines.append("- Debugging: Chrome DevTools")
 
         return lines
 
     def _generate_testing(self, context: Dict[str, Any]) -> List[str]:
-        """生成测试指南"""
+        """Generate testing guide"""
         lines = []
         language = context.get("language", "")
 
-        lines.append("### 运行测试")
+        lines.append("### Running Tests")
         if language == "Python":
             lines.append("```bash")
-            lines.append("# 运行所有测试")
+            lines.append("# Run all tests")
             lines.append("pytest")
             lines.append("")
-            lines.append("# 运行特定测试文件")
+            lines.append("# Run specific test file")
             lines.append("pytest tests/test_main.py")
             lines.append("")
-            lines.append("# 查看测试覆盖率")
+            lines.append("# View test coverage")
             lines.append("pytest --cov=src")
             lines.append("```")
         elif language in ["JavaScript", "TypeScript"]:
             lines.append("```bash")
-            lines.append("# 运行所有测试")
+            lines.append("# Run all tests")
             lines.append("npm test")
             lines.append("")
-            lines.append("# 运行特定测试文件")
+            lines.append("# Run specific test file")
             lines.append("npm test -- --grep 'test name'")
             lines.append("")
-            lines.append("# 查看测试覆盖率")
+            lines.append("# View test coverage")
             lines.append("npm run test:coverage")
             lines.append("```")
 
         return lines
 
     def _get_timestamp(self) -> str:
-        """获取当前时间戳"""
+        """Get current timestamp"""
         from datetime import datetime
         return datetime.now().isoformat()
 
 
-# 全局实例
+# Global instance
 dev_guide_generator = DevGuideGenerator()

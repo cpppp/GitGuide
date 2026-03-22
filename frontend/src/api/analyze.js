@@ -6,10 +6,9 @@ const api = axios.create({
 })
 
 // 启动分析
-export function startAnalyze(repoUrl, mode = 'fast') {
+export function startAnalyze(repoUrl) {
   return api.post('/analyze', {
-    repo_url: repoUrl,
-    mode: mode
+    repo_url: repoUrl
   })
 }
 

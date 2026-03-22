@@ -1,6 +1,6 @@
-"""TutorialGenerator - 使用教程文档生成器
+"""TutorialGenerator - Usage Tutorial Document Generator
 
-负责生成使用教程文档，包含基础用法、进阶用法、API参考、示例代码
+Generates usage tutorial documentation, including basic usage, advanced usage, API reference, and example code
 """
 
 from typing import Dict, Any, List
@@ -8,22 +8,22 @@ from agents.generators.base_generator import BaseGenerator
 
 
 class TutorialGenerator(BaseGenerator):
-    """使用教程文档生成器 - 基于LLM生成高质量文档"""
+    """Usage Tutorial Document Generator - High-quality documentation via LLM"""
 
     def __init__(self):
         super().__init__("TutorialGenerator", "usage_tutorial")
 
     def generate(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """生成使用教程文档"""
+        """Generate usage tutorial document"""
         repo_url = context.get("repo_url", "")
         repo_path = context.get("repo_path", "")
         analysis_results = context.get("analysis_results", {})
 
         try:
             gen_context = self._get_shared_context(context)
-            
+
             content = self.generate_with_llm(gen_context, repo_path, analysis_results)
-            
+
             if not content:
                 content = self.generate_fallback(gen_context, repo_path, analysis_results)
 
@@ -46,80 +46,81 @@ class TutorialGenerator(BaseGenerator):
             }
 
     def generate_with_llm(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
-        """使用LLM生成使用教程文档"""
-        
-        prompt = f"""你是一个技术文档专家。请根据以下项目信息，生成一份高质量的使用教程文档。
+        """Generate usage tutorial document using LLM"""
 
-## 项目信息
-- 语言: {context.get('language', 'Unknown')}
-- 项目类型: {context.get('project_type', 'Unknown')}
-- 框架: {', '.join(context.get('frameworks', [])) or '无'}
+        prompt = f"""You are a technical documentation expert. Based on the following project information, generate a high-quality usage tutorial document.
 
-## 目录结构
+## Project Information
+- Language: {context.get('language', 'Unknown')}
+- Project Type: {context.get('project_type', 'Unknown')}
+- Frameworks: {', '.join(context.get('frameworks', [])) or 'None'}
+
+## Directory Structure
 ```
-{context.get('directory_tree', '无')}
+{context.get('directory_tree', 'None')}
 ```
 
-## README 内容
-{context.get('readme', '无README')[:2000]}
+## README Content
+{context.get('readme', 'No README')[:2000]}
 
-## 主要依赖
-{chr(10).join(context.get('requirements', [])[:15]) or '无'}
+## Main Dependencies
+{chr(10).join(context.get('requirements', [])[:15]) or 'None'}
 
-## 主要源文件
+## Main Source Files
 {self._format_main_files(context.get('main_files', []))}
 
 ---
 
-请生成一份使用教程文档，包含以下内容：
-1. **概述** - 本教程的目标和适用人群
-2. **基础用法** - 最简单的使用方法，包含代码示例
-3. **进阶用法** - 高级功能和配置选项
-4. **API 参考** - 主要API和函数说明
-5. **示例代码** - 完整的使用示例
-6. **最佳实践** - 使用建议和注意事项
+Please generate a usage tutorial document containing:
 
-要求：
-- 使用Markdown格式
-- 代码示例要完整可运行
-- 从简单到复杂，循序渐进
-- 内容要基于实际项目信息
+1. **Overview** - Goals of this tutorial and target audience
+2. **Basic Usage** - Simplest usage method, with code examples
+3. **Advanced Usage** - Advanced features and configuration options
+4. **API Reference** - Main API and function descriptions
+5. **Example Code** - Complete usage examples
+6. **Best Practices** - Usage suggestions and precautions
+
+Requirements:
+- Use Markdown format
+- Code examples should be complete and runnable
+- Progress from simple to complex, step by step
+- Content should be based on actual project information
 """
 
         return self._call_llm(prompt)
 
     def generate_fallback(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
-        """降级生成 - 当LLM不可用时使用模板"""
+        """Fallback generation - Template when LLM is unavailable"""
         lines = []
 
-        lines.append("# 使用教程")
+        lines.append("# Usage Tutorial")
         lines.append("")
 
-        lines.append("## 概述")
+        lines.append("## Overview")
         lines.append(self._generate_overview(context))
         lines.append("")
 
-        lines.append("## 基础用法")
+        lines.append("## Basic Usage")
         basic = self._generate_basic_usage(context)
         lines.extend(basic)
         lines.append("")
 
-        lines.append("## 进阶用法")
+        lines.append("## Advanced Usage")
         advanced = self._generate_advanced_usage(context)
         lines.extend(advanced)
         lines.append("")
 
-        lines.append("## 示例代码")
+        lines.append("## Example Code")
         examples = self._generate_examples(context)
         lines.extend(examples)
 
         return "\n".join(lines)
 
     def _format_main_files(self, main_files: List[Dict[str, str]]) -> str:
-        """格式化主要源文件"""
+        """Format main source files"""
         if not main_files:
-            return "无"
-        
+            return "None"
+
         result = []
         for f in main_files[:2]:
             result.append(f"### {f['name']}")
@@ -129,52 +130,52 @@ class TutorialGenerator(BaseGenerator):
         return '\n'.join(result)
 
     def _generate_overview(self, context: Dict[str, Any]) -> str:
-        """生成概述"""
+        """Generate overview"""
         language = context.get("language", "Unknown")
         frameworks = context.get("frameworks", [])
-        
-        overview = f"本教程将帮助你快速上手这个 {language} 项目。"
+
+        overview = f"This tutorial will help you quickly get started with this {language} project."
         if frameworks:
-            overview += f" 项目使用 {frameworks[0]} 框架。"
+            overview += f" The project uses {frameworks[0]} framework."
         return overview
 
     def _generate_basic_usage(self, context: Dict[str, Any]) -> List[str]:
-        """生成基础用法"""
+        """Generate basic usage"""
         lines = []
         language = context.get("language", "")
         main_files = context.get("main_files", [])
 
-        lines.append("### 快速开始")
+        lines.append("### Quick Start")
         if language == "Python":
             lines.append("```python")
-            lines.append("# 导入模块")
+            lines.append("# Import module")
             if main_files:
                 lines.append(f"from {main_files[0]['name'].replace('.py', '')} import main")
             lines.append("")
-            lines.append("# 运行主函数")
+            lines.append("# Run main function")
             lines.append("result = main()")
             lines.append("print(result)")
             lines.append("```")
         elif language in ["JavaScript", "TypeScript"]:
             lines.append("```javascript")
-            lines.append("// 导入模块")
+            lines.append("// Import module")
             lines.append("import { main } from './src/index'")
             lines.append("")
-            lines.append("// 运行主函数")
+            lines.append("// Run main function")
             lines.append("main();")
             lines.append("```")
 
         return lines
 
     def _generate_advanced_usage(self, context: Dict[str, Any]) -> List[str]:
-        """生成进阶用法"""
+        """Generate advanced usage"""
         lines = []
         language = context.get("language", "")
 
-        lines.append("### 自定义配置")
+        lines.append("### Custom Configuration")
         if language == "Python":
             lines.append("```python")
-            lines.append("# 配置选项")
+            lines.append("# Configuration options")
             lines.append("config = {")
             lines.append("    'debug': True,")
             lines.append("    'timeout': 30")
@@ -182,7 +183,7 @@ class TutorialGenerator(BaseGenerator):
             lines.append("```")
         elif language in ["JavaScript", "TypeScript"]:
             lines.append("```javascript")
-            lines.append("// 配置选项")
+            lines.append("// Configuration options")
             lines.append("const config = {")
             lines.append("  debug: true,")
             lines.append("  timeout: 30000")
@@ -192,15 +193,15 @@ class TutorialGenerator(BaseGenerator):
         return lines
 
     def _generate_examples(self, context: Dict[str, Any]) -> List[str]:
-        """生成示例代码"""
+        """Generate example code"""
         lines = []
         language = context.get("language", "")
 
-        lines.append("### 完整示例")
+        lines.append("### Complete Example")
         if language == "Python":
             lines.append("```python")
             lines.append("#!/usr/bin/env python")
-            lines.append('"""完整使用示例"""')
+            lines.append('"""Complete usage example"""')
             lines.append("")
             lines.append("def main():")
             lines.append("    print('Hello, World!')")
@@ -210,7 +211,7 @@ class TutorialGenerator(BaseGenerator):
             lines.append("```")
         elif language in ["JavaScript", "TypeScript"]:
             lines.append("```javascript")
-            lines.append("// 完整使用示例")
+            lines.append("// Complete usage example")
             lines.append("function main() {")
             lines.append("  console.log('Hello, World!');")
             lines.append("}")
@@ -221,10 +222,10 @@ class TutorialGenerator(BaseGenerator):
         return lines
 
     def _get_timestamp(self) -> str:
-        """获取当前时间戳"""
+        """Get current timestamp"""
         from datetime import datetime
         return datetime.now().isoformat()
 
 
-# 全局实例
+# Global instance
 tutorial_generator = TutorialGenerator()

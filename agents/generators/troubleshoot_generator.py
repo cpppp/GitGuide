@@ -1,6 +1,6 @@
-"""TroubleshootGenerator - 故障排查文档生成器
+"""TroubleshootGenerator - Troubleshooting Document Generator
 
-负责生成故障排查文档，包含常见错误、调试技巧、FAQ
+Generates troubleshooting documentation, including common errors, debugging tips, and FAQ
 """
 
 from typing import Dict, Any, List
@@ -8,22 +8,22 @@ from agents.generators.base_generator import BaseGenerator
 
 
 class TroubleshootGenerator(BaseGenerator):
-    """故障排查文档生成器 - 基于LLM生成高质量文档"""
+    """Troubleshooting Document Generator - High-quality documentation via LLM"""
 
     def __init__(self):
         super().__init__("TroubleshootGenerator", "troubleshooting")
 
     def generate(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """生成故障排查文档"""
+        """Generate troubleshooting document"""
         repo_url = context.get("repo_url", "")
         repo_path = context.get("repo_path", "")
         analysis_results = context.get("analysis_results", {})
 
         try:
             gen_context = self._get_shared_context(context)
-            
+
             content = self.generate_with_llm(gen_context, repo_path, analysis_results)
-            
+
             if not content:
                 content = self.generate_fallback(gen_context, repo_path, analysis_results)
 
@@ -46,62 +46,63 @@ class TroubleshootGenerator(BaseGenerator):
             }
 
     def generate_with_llm(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
-        """使用LLM生成故障排查文档"""
-        
-        prompt = f"""你是一个技术文档专家。请根据以下项目信息，生成一份高质量的故障排查文档。
+        """Generate troubleshooting document using LLM"""
 
-## 项目信息
-- 语言: {context.get('language', 'Unknown')}
-- 项目类型: {context.get('project_type', 'Unknown')}
-- 框架: {', '.join(context.get('frameworks', [])) or '无'}
+        prompt = f"""You are a technical documentation expert. Based on the following project information, generate a high-quality troubleshooting document.
 
-## 目录结构
+## Project Information
+- Language: {context.get('language', 'Unknown')}
+- Project Type: {context.get('project_type', 'Unknown')}
+- Frameworks: {', '.join(context.get('frameworks', [])) or 'None'}
+
+## Directory Structure
 ```
-{context.get('directory_tree', '无')}
+{context.get('directory_tree', 'None')}
 ```
 
-## README 内容
-{context.get('readme', '无README')[:1500]}
+## README Content
+{context.get('readme', 'No README')[:1500]}
 
-## 主要依赖
-{chr(10).join(context.get('requirements', [])[:15]) or '无'}
+## Main Dependencies
+{chr(10).join(context.get('requirements', [])[:15]) or 'None'}
 
 ---
 
-请生成一份故障排查文档，包含以下内容：
-1. **常见错误** - 列出5-10个常见错误及其解决方案
-2. **调试技巧** - 如何调试项目、查看日志
-3. **环境问题** - 环境配置相关的问题
-4. **依赖问题** - 依赖安装和版本冲突问题
-5. **FAQ** - 常见问题解答
+Please generate a troubleshooting document containing:
 
-要求：
-- 使用Markdown格式
-- 错误信息要准确
-- 解决方案要具体可操作
-- 内容要基于实际项目信息
+1. **Common Errors** - List 5-10 common errors and their solutions
+2. **Debugging Tips** - How to debug the project, viewing logs
+3. **Environment Issues** - Issues related to environment configuration
+4. **Dependency Issues** - Dependency installation and version conflict issues
+5. **FAQ** - Frequently asked questions and answers
+
+Requirements:
+- Use Markdown format
+- Error messages should be accurate
+- Solutions should be specific and actionable
+- Content should be based on actual project information
 """
 
         return self._call_llm(prompt)
 
     def generate_fallback(self, context: Dict[str, Any], repo_path: str, analysis_results: Dict[str, Any]) -> str:
-        """降级生成 - 当LLM不可用时使用模板"""
+        """Fallback generation - Template when LLM is unavailable"""
         lines = []
 
-        lines.append("# 故障排查指南")
+        lines.append("# Troubleshooting Guide")
         lines.append("")
 
-        lines.append("## 常见错误")
+        lines.append("## Common Errors")
         errors = self._generate_common_errors(context)
         lines.extend(errors)
         lines.append("")
 
-        lines.append("## 调试技巧")
+        lines.append("## Debugging Tips")
         debug = self._generate_debug_tips(context)
         lines.extend(debug)
         lines.append("")
 
-        lines.append("## 环境问题")
+        lines.append("## Environment Issues")
         env = self._generate_env_issues(context)
         lines.extend(env)
         lines.append("")
@@ -113,44 +114,44 @@ class TroubleshootGenerator(BaseGenerator):
         return "\n".join(lines)
 
     def _generate_common_errors(self, context: Dict[str, Any]) -> List[str]:
-        """生成常见错误说明"""
+        """Generate common errors description"""
         lines = []
         language = context.get("language", "")
 
         if language == "Python":
             lines.append("### 1. ModuleNotFoundError")
-            lines.append("**错误信息**: `ModuleNotFoundError: No module named 'xxx'`")
-            lines.append("**解决方案**: 安装缺失的依赖")
+            lines.append("**Error**: `ModuleNotFoundError: No module named 'xxx'`")
+            lines.append("**Solution**: Install the missing dependency")
             lines.append("```bash")
             lines.append("pip install xxx")
             lines.append("```")
             lines.append("")
             lines.append("### 2. ImportError")
-            lines.append("**错误信息**: `ImportError: cannot import name 'xxx'`")
-            lines.append("**解决方案**: 检查模块版本或重新安装")
+            lines.append("**Error**: `ImportError: cannot import name 'xxx'`")
+            lines.append("**Solution**: Check module version or reinstall")
             lines.append("```bash")
             lines.append("pip install --upgrade xxx")
             lines.append("```")
         elif language in ["JavaScript", "TypeScript"]:
             lines.append("### 1. Cannot find module")
-            lines.append("**错误信息**: `Error: Cannot find module 'xxx'`")
-            lines.append("**解决方案**: 安装缺失的依赖")
+            lines.append("**Error**: `Error: Cannot find module 'xxx'`")
+            lines.append("**Solution**: Install the missing dependency")
             lines.append("```bash")
             lines.append("npm install xxx")
             lines.append("```")
             lines.append("")
             lines.append("### 2. TypeError")
-            lines.append("**错误信息**: `TypeError: xxx is not a function`")
-            lines.append("**解决方案**: 检查导入方式和模块版本")
+            lines.append("**Error**: `TypeError: xxx is not a function`")
+            lines.append("**Solution**: Check import method and module version")
 
         return lines
 
     def _generate_debug_tips(self, context: Dict[str, Any]) -> List[str]:
-        """生成调试技巧"""
+        """Generate debugging tips"""
         lines = []
         language = context.get("language", "")
 
-        lines.append("### 日志调试")
+        lines.append("### Log Debugging")
         if language == "Python":
             lines.append("```python")
             lines.append("import logging")
@@ -167,51 +168,51 @@ class TroubleshootGenerator(BaseGenerator):
         return lines
 
     def _generate_env_issues(self, context: Dict[str, Any]) -> List[str]:
-        """生成环境问题说明"""
+        """Generate environment issues description"""
         lines = []
         language = context.get("language", "")
 
         if language == "Python":
-            lines.append("### Python 版本问题")
-            lines.append("- 确保使用正确的 Python 版本")
-            lines.append("- 使用 `python --version` 检查版本")
+            lines.append("### Python Version Issues")
+            lines.append("- Ensure you are using the correct Python version")
+            lines.append("- Use `python --version` to check the version")
             lines.append("")
-            lines.append("### 虚拟环境问题")
-            lines.append("- 确保已激活虚拟环境")
-            lines.append("- 使用 `which python` 检查当前 Python 路径")
+            lines.append("### Virtual Environment Issues")
+            lines.append("- Ensure the virtual environment is activated")
+            lines.append("- Use `which python` to check the current Python path")
         elif language in ["JavaScript", "TypeScript"]:
-            lines.append("### Node.js 版本问题")
-            lines.append("- 确保使用正确的 Node.js 版本")
-            lines.append("- 使用 `node --version` 检查版本")
+            lines.append("### Node.js Version Issues")
+            lines.append("- Ensure you are using the correct Node.js version")
+            lines.append("- Use `node --version` to check the version")
             lines.append("")
-            lines.append("### npm/yarn 问题")
-            lines.append("- 清除缓存: `npm cache clean --force`")
-            lines.append("- 删除 node_modules 重新安装")
+            lines.append("### npm/yarn Issues")
+            lines.append("- Clear cache: `npm cache clean --force`")
+            lines.append("- Delete node_modules and reinstall")
 
         return lines
 
     def _generate_faq(self, context: Dict[str, Any]) -> List[str]:
-        """生成FAQ"""
+        """Generate FAQ"""
         lines = []
         language = context.get("language", "")
 
-        lines.append("### Q: 如何更新项目依赖？")
+        lines.append("### Q: How to update project dependencies?")
         if language == "Python":
-            lines.append("A: 运行 `pip install --upgrade -r requirements.txt`")
+            lines.append("A: Run `pip install --upgrade -r requirements.txt`")
         elif language in ["JavaScript", "TypeScript"]:
-            lines.append("A: 运行 `npm update` 或 `yarn upgrade`")
+            lines.append("A: Run `npm update` or `yarn upgrade`")
         lines.append("")
 
-        lines.append("### Q: 如何查看详细错误信息？")
-        lines.append("A: 查看日志文件或启用调试模式")
+        lines.append("### Q: How to view detailed error information?")
+        lines.append("A: Check log files or enable debug mode")
 
         return lines
 
     def _get_timestamp(self) -> str:
-        """获取当前时间戳"""
+        """Get current timestamp"""
         from datetime import datetime
         return datetime.now().isoformat()
 
 
-# 全局实例
+# Global instance
 troubleshoot_generator = TroubleshootGenerator()
