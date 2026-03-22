@@ -1,45 +1,85 @@
 <template>
   <div class="code-atlas">
-    <el-tabs v-model="activeSubTab">
-      <el-tab-pane label="目录结构" name="tree">
+    <div class="atlas-header">
+      <span class="atlas-icon">🗺</span>
+      <span class="atlas-title">{{ language === 'zh' ? '代码图谱' : 'Code Atlas' }}</span>
+    </div>
+
+    <el-tabs v-model="activeSubTab" class="atlas-tabs">
+      <el-tab-pane name="tree">
+        <template #label>
+          <span class="tab-label"><span class="tab-icon">📁</span> {{ language === 'zh' ? '目录结构' : 'Directory' }}</span>
+        </template>
         <div class="tree-container">
-          <div v-if="loading" class="loading">加载中...</div>
+          <div v-if="loading" class="loading">
+            <span class="loading-spinner"></span>
+            <span>{{ language === 'zh' ? '加载中...' : 'Loading...' }}</span>
+          </div>
           <div v-else-if="directoryTree" class="tree-view">
             <div class="tree-node" v-html="renderTree(directoryTree)"></div>
           </div>
-          <div v-else class="empty">暂无目录结构信息</div>
-        </div>
-      </el-tab-pane>
-
-      <el-tab-pane label="文件统计" name="stats">
-        <div class="stats-container">
-          <div v-if="loading" class="loading">加载中...</div>
-          <div v-else-if="fileStats.length > 0">
-            <el-table :data="fileStats" style="width: 100%" max-height="400">
-              <el-table-column prop="name" label="文件类型" width="150" />
-              <el-table-column prop="count" label="文件数量" width="120" />
-              <el-table-column prop="lines" label="代码行数" width="120" />
-            </el-table>
+          <div v-else class="empty">
+            <span class="empty-icon">📭</span>
+            <span>{{ language === 'zh' ? '暂无目录结构信息' : 'No directory structure' }}</span>
           </div>
-          <div v-else class="empty">暂无文件统计信息</div>
         </div>
       </el-tab-pane>
 
-      <el-tab-pane label="依赖关系" name="deps">
-        <div class="deps-container">
-          <div v-if="loading" class="loading">加载中...</div>
-          <div v-else-if="dependencies.length > 0">
-            <div class="dep-list">
-              <el-card v-for="(dep, index) in dependencies" :key="index" class="dep-card">
-                <div class="dep-item">
-                  <span class="dep-from">{{ dep.from }}</span>
-                  <span class="dep-arrow">→</span>
-                  <span class="dep-to">{{ dep.to }}</span>
+      <el-tab-pane name="stats">
+        <template #label>
+          <span class="tab-label"><span class="tab-icon">📊</span> {{ language === 'zh' ? '文件统计' : 'Statistics' }}</span>
+        </template>
+        <div class="stats-container">
+          <div v-if="loading" class="loading">
+            <span class="loading-spinner"></span>
+            <span>{{ language === 'zh' ? '加载中...' : 'Loading...' }}</span>
+          </div>
+          <div v-else-if="fileStats.length > 0">
+            <div class="stats-grid">
+              <div v-for="stat in fileStats" :key="stat.name" class="stat-card">
+                <div class="stat-ext">{{ stat.name }}</div>
+                <div class="stat-info">
+                  <div class="stat-item">
+                    <span class="stat-label">{{ language === 'zh' ? '文件数' : 'Files' }}</span>
+                    <span class="stat-value">{{ stat.count }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ language === 'zh' ? '代码行数' : 'Lines' }}</span>
+                    <span class="stat-value">{{ formatNumber(stat.lines) }}</span>
+                  </div>
                 </div>
-              </el-card>
+              </div>
             </div>
           </div>
-          <div v-else class="empty">暂无依赖关系信息</div>
+          <div v-else class="empty">
+            <span class="empty-icon">📭</span>
+            <span>{{ language === 'zh' ? '暂无文件统计信息' : 'No file statistics' }}</span>
+          </div>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane name="deps">
+        <template #label>
+          <span class="tab-label"><span class="tab-icon">🔗</span> {{ language === 'zh' ? '依赖关系' : 'Dependencies' }}</span>
+        </template>
+        <div class="deps-container">
+          <div v-if="loading" class="loading">
+            <span class="loading-spinner"></span>
+            <span>{{ language === 'zh' ? '加载中...' : 'Loading...' }}</span>
+          </div>
+          <div v-else-if="dependencies.length > 0">
+            <div class="dep-list">
+              <div v-for="(dep, index) in dependencies" :key="index" class="dep-item">
+                <span class="dep-from">{{ dep.from }}</span>
+                <span class="dep-arrow">→</span>
+                <span class="dep-to">{{ dep.to }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty">
+            <span class="empty-icon">📭</span>
+            <span>{{ language === 'zh' ? '暂无依赖关系信息' : 'No dependencies' }}</span>
+          </div>
         </div>
       </el-tab-pane>
     </el-tabs>
@@ -48,6 +88,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useSettingsStore } from '@/stores/settings'
+import { storeToRefs } from 'pinia'
 
 const props = defineProps({
   result: {
@@ -59,6 +101,9 @@ const props = defineProps({
     default: false
   }
 })
+
+const settingsStore = useSettingsStore()
+const { language } = storeToRefs(settingsStore)
 
 const activeSubTab = ref('tree')
 
@@ -125,33 +170,21 @@ function renderTree(tree) {
   if (!tree) return ''
 
   const renderNode = (node, indent = 0) => {
-    let html = ''
+    if (!node || !node.name) return ''
+
     const padding = indent * 20
+    const icon = node.type === 'folder' ? '📁' : '📄'
+    const isDir = node.type === 'folder'
+    const style = isDir ? 'font-weight: bold;' : ''
 
-    if (typeof node === 'object' && node !== null) {
-      for (const [name, children] of Object.entries(node)) {
-        const isDir = children && typeof children === 'object'
-        const icon = isDir ? '📁' : '📄'
-        const style = isDir ? 'font-weight: bold;' : ''
+    let html = `<div class="tree-item" style="padding-left: ${padding}px;">
+      <span class="tree-icon">${icon}</span>
+      <span class="tree-name" style="${style}">${node.name}</span>
+    </div>`
 
-        html += `<div class="tree-item" style="padding-left: ${padding}px;">
-          <span class="tree-icon">${icon}</span>
-          <span class="tree-name" style="${style}">${name}</span>
-        </div>`
-
-        if (isDir) {
-          html += renderNode(children, indent + 1)
-        }
-      }
-    } else if (Array.isArray(tree)) {
-      // 处理数组格式
-      for (const item of tree) {
-        const icon = item.is_directory ? '📁' : '📄'
-        const style = item.is_directory ? 'font-weight: bold;' : ''
-        html += `<div class="tree-item" style="padding-left: ${padding}px;">
-          <span class="tree-icon">${icon}</span>
-          <span class="tree-name" style="${style}">${item.name}</span>
-        </div>`
+    if (isDir && node.children && Array.isArray(node.children)) {
+      for (const child of node.children) {
+        html += renderNode(child, indent + 1)
       }
     }
 
@@ -161,12 +194,11 @@ function renderTree(tree) {
   return renderNode(tree)
 }
 
-// 格式化文件大小
-function formatSize(bytes) {
-  if (!bytes) return '-'
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+// 格式化数字
+function formatNumber(num) {
+  if (!num) return '0'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
+  return num.toString()
 }
 </script>
 
@@ -175,68 +207,189 @@ function formatSize(bytes) {
   padding: 10px 0;
 }
 
+.atlas-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: var(--bg-warm);
+  border-radius: var(--radius-md);
+}
+
+.atlas-icon {
+  font-size: 24px;
+}
+
+.atlas-title {
+  font-family: 'Noto Serif SC', Georgia, serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.atlas-tabs :deep(.el-tabs__item) {
+  font-size: 14px;
+}
+
+.tab-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .tree-container,
 .stats-container,
 .deps-container {
-  padding: 10px 0;
+  padding: 16px 0;
   max-height: 500px;
   overflow-y: auto;
 }
 
 .tree-view {
-  font-family: 'Consolas', monospace;
+  font-family: 'Crimson Pro', 'Consolas', monospace;
   font-size: 14px;
+  line-height: 1.8;
 }
 
 .tree-item {
   display: flex;
   align-items: center;
   padding: 4px 0;
+  transition: all var(--transition-fast);
+}
+
+.tree-item:hover {
+  background: var(--bg-warm);
+  border-radius: var(--radius-sm);
 }
 
 .tree-icon {
   margin-right: 8px;
+  font-size: 14px;
 }
 
 .tree-name {
-  color: var(--text-color, #333);
+  color: var(--text-color);
+  font-size: 13px;
 }
 
 .loading,
 .empty {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   padding: 40px;
-  color: var(--text-color-secondary, #999);
+  color: var(--text-color-muted);
 }
 
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-icon {
+  font-size: 32px;
+  opacity: 0.4;
+}
+
+/* 统计卡片 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: var(--bg-warm);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  border: 1px solid var(--border-light);
+  transition: all var(--transition-normal);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-ext {
+  font-family: 'Crimson Pro', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-color-muted);
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+/* 依赖关系 */
 .dep-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 10px;
-}
-
-.dep-card {
-  flex: 1 1 300px;
-  max-width: 400px;
 }
 
 .dep-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-warm);
+  border-radius: var(--radius-md);
+  font-family: 'Crimson Pro', monospace;
+  font-size: 14px;
+  transition: all var(--transition-normal);
+}
+
+.dep-item:hover {
+  transform: translateX(4px);
+  box-shadow: var(--shadow-sm);
 }
 
 .dep-from {
-  color: #409eff;
-  font-weight: bold;
+  color: var(--primary-color);
+  font-weight: 600;
 }
 
 .dep-arrow {
-  color: #909399;
+  color: var(--accent-color);
 }
 
 .dep-to {
-  color: #67c23a;
-  font-weight: bold;
+  color: var(--success-color);
+  font-weight: 600;
 }
 </style>

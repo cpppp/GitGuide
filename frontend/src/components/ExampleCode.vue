@@ -1,34 +1,46 @@
 <template>
   <div class="example-code">
-    <div v-if="loading" class="loading">{{ language === 'zh' ? '加载示例代码...' : 'Loading examples...' }}</div>
+    <div class="example-header-bar">
+      <span class="bar-icon">💡</span>
+      <span class="bar-title">{{ language === 'zh' ? '示例代码' : 'Example Code' }}</span>
+    </div>
+
+    <div v-if="loading" class="loading">
+      <span class="loading-spinner"></span>
+      <span>{{ language === 'zh' ? '加载示例代码...' : 'Loading examples...' }}</span>
+    </div>
     <div v-else-if="examples && examples.length > 0" class="examples-list">
-      <el-card v-for="(example, index) in examples" :key="index" class="example-card">
-        <template #header>
-          <div class="example-header">
+      <div v-for="(example, index) in examples" :key="index" class="example-card">
+        <div class="example-header">
+          <div class="file-info">
+            <span class="file-icon">📄</span>
             <span class="filename">{{ example.filename }}</span>
-            <el-tag size="small">{{ example.language }}</el-tag>
+            <el-tag size="small" class="lang-tag">{{ example.language }}</el-tag>
           </div>
-        </template>
+        </div>
         <div class="example-content">
           <div v-if="example.snippets && example.snippets.length > 0" class="snippets">
             <el-tag
               v-for="(snippet, i) in example.snippets"
               :key="i"
               class="snippet-tag"
-              type="info"
             >
               {{ snippet.name }}
             </el-tag>
           </div>
           <pre class="code-preview"><code>{{ example.preview }}</code></pre>
           <div class="example-meta">
-            <span>{{ language === 'zh' ? '总行数' : 'Total lines' }}: {{ example.total_lines }}</span>
+            <span class="meta-item">
+              <span class="meta-icon">📏</span>
+              {{ language === 'zh' ? '总行数' : 'Lines' }}: {{ example.total_lines }}
+            </span>
           </div>
         </div>
-      </el-card>
+      </div>
     </div>
     <div v-else class="empty">
-      {{ language === 'zh' ? '暂无示例代码' : 'No example code found' }}
+      <span class="empty-icon">📭</span>
+      <span>{{ language === 'zh' ? '暂无示例代码' : 'No example code found' }}</span>
     </div>
   </div>
 </template>
@@ -71,68 +83,163 @@ const examples = computed(() => {
   padding: 10px 0;
 }
 
+.example-header-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: var(--bg-warm);
+  border-radius: var(--radius-md);
+}
+
+.bar-icon {
+  font-size: 24px;
+}
+
+.bar-title {
+  font-family: 'Noto Serif SC', Georgia, serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
 .examples-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px;
 }
 
 .example-card {
-  margin-bottom: 10px;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all var(--transition-normal);
+}
+
+.example-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .example-header {
+  padding: 16px 20px;
+  background: var(--bg-warm);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.file-info {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 10px;
+}
+
+.file-icon {
+  font-size: 18px;
 }
 
 .filename {
-  font-weight: bold;
-  font-family: 'Consolas', monospace;
+  font-family: 'Crimson Pro', 'Consolas', monospace;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.lang-tag {
+  background: var(--bg-paper) !important;
+  border-color: var(--border-color) !important;
+  color: var(--primary-color) !important;
 }
 
 .example-content {
-  padding: 10px 0;
+  padding: 16px 20px;
 }
 
 .snippets {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
 
 .snippet-tag {
+  background: var(--bg-warm) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-color-secondary) !important;
   cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.snippet-tag:hover {
+  background: var(--primary-color) !important;
+  color: #fff !important;
+  border-color: var(--primary-color) !important;
 }
 
 .code-preview {
-  background: var(--code-bg-color, #f5f5f5);
-  padding: 15px;
-  border-radius: 6px;
+  background: var(--bg-warm);
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
   overflow-x: auto;
-  font-family: 'Consolas', monospace;
-  font-size: 12px;
-  line-height: 1.5;
+  font-family: 'Crimson Pro', 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.6;
   max-height: 300px;
   overflow-y: auto;
+  border: 1px solid var(--border-light);
 }
 
 .code-preview code {
   white-space: pre;
+  color: var(--text-color);
 }
 
 .example-meta {
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--text-color-secondary, #999);
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-color-muted);
+}
+
+.meta-icon {
+  font-size: 14px;
 }
 
 .loading,
 .empty {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   padding: 40px;
-  color: var(--text-color-secondary, #999);
+  color: var(--text-color-muted);
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-icon {
+  font-size: 32px;
+  opacity: 0.4;
 }
 </style>

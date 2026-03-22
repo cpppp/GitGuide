@@ -394,6 +394,7 @@ class Workflow:
             "main_files": [],
             "requirements": [],
             "package_json": {},
+            "config_files": {},  # V3.2 新增：配置文件
             "core_modules": self.state.structure_result.get("core_modules", []) if self.state.structure_result else [],
             "entry_points": self.state.structure_result.get("entry_points", []) if self.state.structure_result else [],
             "dependencies": self.state.dependency_result.get("dependencies", []) if self.state.dependency_result else [],
@@ -403,20 +404,20 @@ class Workflow:
         if not repo_path or not os.path.exists(repo_path):
             return context
         
-        # 读取README
-        readme_files = ['README.md', 'README.rst', 'README.txt', 'readme.md']
+        # 读取README（增强到500行）
+        readme_files = ['README.md', 'README.rst', 'README.txt', 'readme.md', 'README.MD']
         for readme in readme_files:
             try:
                 full_path = os.path.join(repo_path, readme)
                 if os.path.exists(full_path):
                     with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        context["readme"] = ''.join(f.readlines()[:200])
+                        context["readme"] = ''.join(f.readlines()[:500])  # 200 → 500
                     break
             except Exception:
                 pass
-        
-        # 生成目录树
-        context["directory_tree"] = self._get_directory_tree(repo_path)
+
+        # 生成目录树（增强到3层深度，100条目）
+        context["directory_tree"] = self._get_directory_tree(repo_path, max_depth=3)
         
         # 读取requirements.txt
         try:
@@ -439,14 +440,17 @@ class Workflow:
         
         # 读取主要源文件
         context["main_files"] = self._get_main_files(repo_path, context["language"])
-        
+
+        # 读取配置文件（V3.2 新增）
+        context["config_files"] = self._get_config_files(repo_path, context["language"])
+
         return context
 
-    def _get_directory_tree(self, repo_path: str, max_depth: int = 2) -> str:
-        """获取目录树"""
+    def _get_directory_tree(self, repo_path: str, max_depth: int = 3) -> str:
+        """获取目录树（增强版：3层深度，100条目）"""
         import os
         lines = []
-        
+
         def walk_dir(path: str, prefix: str = "", depth: int = 0):
             if depth > max_depth:
                 return
@@ -454,47 +458,131 @@ class Workflow:
                 items = sorted(os.listdir(path))
                 dirs = [i for i in items if os.path.isdir(os.path.join(path, i)) and not i.startswith('.')]
                 files = [i for i in items if os.path.isfile(os.path.join(path, i)) and not i.startswith('.')]
-                
+
                 for d in dirs[:10]:
                     lines.append(f"{prefix}├── {d}/")
                     walk_dir(os.path.join(path, d), prefix + "│   ", depth + 1)
-                
+
                 for f in files[:10]:
                     lines.append(f"{prefix}├── {f}")
             except Exception:
                 pass
 
         walk_dir(repo_path)
-        return '\n'.join(lines[:50])
+        return '\n'.join(lines[:100])  # 50 → 100
 
     def _get_main_files(self, repo_path: str, language: str) -> list:
-        """获取主要源文件内容"""
+        """获取主要源文件内容（增强版：10个文件，每个150行）"""
         import os
         main_files = []
         patterns = {
-            'Python': ['main.py', 'app.py', '__main__.py', 'run.py', 'server.py'],
-            'JavaScript': ['index.js', 'main.js', 'app.js', 'server.js', 'src/index.js'],
-            'TypeScript': ['index.ts', 'main.ts', 'app.ts', 'src/index.ts'],
-            'Go': ['main.go', 'cmd/main.go'],
-            'Java': ['Main.java', 'Application.java']
+            'Python': [
+                'main.py', 'app.py', '__main__.py', 'run.py', 'server.py',
+                'core.py', 'app/__init__.py', 'main', 'cli.py', 'wsgi.py'
+            ],
+            'JavaScript': [
+                'index.js', 'main.js', 'app.js', 'server.js', 'src/index.js',
+                'app.js', 'index.js', 'server.js', 'src/main.js', 'bin/www'
+            ],
+            'TypeScript': [
+                'index.ts', 'main.ts', 'app.ts', 'src/index.ts',
+                'main.ts', 'app.ts', 'src/main.ts', 'server.ts', 'bin/www'
+            ],
+            'Go': ['main.go', 'cmd/main.go', 'cmd/server/main.go', 'app.go', 'main'],
+            'Java': ['Main.java', 'Application.java', 'App.java', 'Main.java', 'src/Main.java'],
+            'Rust': ['main.rs', 'src/main.rs', 'lib.rs', 'src/lib.rs', 'bin/main.rs'],
+            'C++': ['main.cpp', 'src/main.cpp', 'main.cc', 'app.cpp', 'src/app.cpp'],
+            'C#': ['Program.cs', 'Main.cs', 'Program.cs', 'src/Program.cs', 'App.cs']
         }
 
-        files_to_check = patterns.get(language, ['main.py', 'index.js'])
-        
-        for file_name in files_to_check:
+        files_to_check = patterns.get(language, patterns['Python'])
+
+        for file_name in files_to_check[:50]:  # 读取更多文件：50个
             try:
                 full_path = os.path.join(repo_path, file_name)
-                if os.path.exists(full_path):
+                if os.path.exists(full_path) and os.path.isfile(full_path):
                     with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        content = ''.join(f.readlines()[:50])
-                    main_files.append({
-                        "name": file_name,
-                        "content": content
-                    })
+                        content = ''.join(f.readlines()[:250])  # 50行 → 250行
+                    if content.strip():
+                        main_files.append({
+                            "name": file_name,
+                            "content": content
+                        })
             except Exception:
                 pass
 
         return main_files
+
+    def _get_config_files(self, repo_path: str, language: str) -> dict:
+        """获取配置文件内容（V3.2 新增）"""
+        import os
+        import json
+        config_files = {}
+
+        config_patterns = {
+            'Python': [
+                'config.py', 'settings.py', 'config.json', 'config.yaml', 'config.yml',
+                '.env.example', 'env.example', 'Makefile', 'Dockerfile', 'docker-compose.yml',
+                'pyproject.toml', 'setup.py', 'setup.cfg', '.flake8', 'pytest.ini'
+            ],
+            'JavaScript': [
+                'package.json', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
+                '.env.example', 'env.example', 'Makefile', 'Dockerfile', 'docker-compose.yml',
+                'tsconfig.json', 'webpack.config.js', 'vite.config.js', '.eslintrc.js'
+            ],
+            'TypeScript': [
+                'tsconfig.json', 'package.json', 'package-lock.json', 'yarn.lock',
+                '.env.example', 'env.example', 'Makefile', 'Dockerfile', 'docker-compose.yml',
+                'vite.config.ts', 'next.config.js', '.eslintrc.js'
+            ],
+            'Go': [
+                'go.mod', 'go.sum', '.env.example', 'env.example', 'Makefile',
+                'Dockerfile', 'docker-compose.yml', '.gitignore', 'golangci.yml'
+            ],
+            'Java': [
+                'pom.xml', 'build.gradle', 'settings.gradle', '.env.example',
+                'Makefile', 'Dockerfile', 'docker-compose.yml', 'application.properties'
+            ],
+            'Rust': [
+                'Cargo.toml', 'Cargo.lock', '.env.example', 'Makefile',
+                'Dockerfile', 'docker-compose.yml', 'rustfmt.toml', 'clippy.toml'
+            ],
+            'C++': [
+                'CMakeLists.txt', 'Makefile', 'Dockerfile', 'docker-compose.yml',
+                '.env.example', 'compile_commands.json', 'conanfile.txt'
+            ],
+            'C#': [
+                '*.csproj', '*.sln', 'appsettings.json', 'Program.cs',
+                'Dockerfile', 'docker-compose.yml', '.env.example', 'Makefile'
+            ]
+        }
+
+        files_to_check = config_patterns.get(language, config_patterns['Python'])
+
+        for file_name in files_to_check:
+            if file_name.startswith('*'):
+                continue
+            try:
+                full_path = os.path.join(repo_path, file_name)
+                if os.path.exists(full_path) and os.path.isfile(full_path):
+                    file_size = os.path.getsize(full_path)
+                    if file_size > 50000:
+                        config_files[file_name] = "[文件过大，已跳过]"
+                        continue
+                    with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = ''.join(f.readlines()[:100])
+                    if content.strip():
+                        if file_name.endswith('.json') or file_name.endswith('.yaml') or file_name.endswith('.yml'):
+                            try:
+                                config_files[file_name] = json.loads(content)
+                            except:
+                                config_files[file_name] = content
+                        else:
+                            config_files[file_name] = content
+            except Exception:
+                pass
+
+        return config_files
 
     def _execute_single_generation(self, doc_type, generate_func, context):
         """执行单个生成任务"""

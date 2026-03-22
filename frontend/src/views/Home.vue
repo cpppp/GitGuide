@@ -1,128 +1,247 @@
 <template>
   <div class="home">
-    <div class="header">
-      <h1 class="title">{{ t('app.title', language) }}</h1>
-      <p class="subtitle">{{ t('app.subtitle', language) }}</p>
+    <!-- 英雄区 -->
+    <div class="hero">
+      <div class="hero-decoration">
+        <div class="deco-line deco-line-1"></div>
+        <div class="deco-line deco-line-2"></div>
+        <div class="deco-dot deco-dot-1"></div>
+        <div class="deco-dot deco-dot-2"></div>
+      </div>
+      <div class="hero-content">
+        <div class="hero-icon">
+          <svg viewBox="0 0 80 80" class="hero-svg">
+            <defs>
+              <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#3d5a6c" />
+                <stop offset="100%" style="stop-color:#2c3e4a" />
+              </linearGradient>
+              <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#c4a35a" />
+                <stop offset="100%" style="stop-color:#b8956e" />
+              </linearGradient>
+            </defs>
+            <!-- 外圈 -->
+            <circle cx="40" cy="40" r="38" fill="none" stroke="url(#heroGrad)" stroke-width="1" opacity="0.2"/>
+            <circle cx="40" cy="40" r="32" fill="none" stroke="url(#heroGrad)" stroke-width="1" opacity="0.3"/>
+            <!-- 书本轮廓 -->
+            <path d="M20 25 L20 60 Q20 62 22 62 L38 62 Q40 62 40 60 L40 25 Q40 23 38 23 L22 23 Q20 23 20 25Z" fill="url(#heroGrad)" opacity="0.15"/>
+            <path d="M40 25 L40 60 Q40 62 42 62 L58 62 Q60 62 60 60 L60 25 Q60 23 58 23 L42 23 Q40 23 40 25Z" fill="url(#heroGrad)" opacity="0.08"/>
+            <!-- 装饰线条 -->
+            <line x1="24" y1="32" x2="36" y2="32" stroke="url(#accentGrad)" stroke-width="2" stroke-linecap="round"/>
+            <line x1="24" y1="40" x2="34" y2="40" stroke="url(#heroGrad)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+            <line x1="24" y1="47" x2="32" y2="47" stroke="url(#heroGrad)" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+            <!-- 右侧装饰 -->
+            <line x1="44" y1="35" x2="56" y2="35" stroke="url(#accentGrad)" stroke-width="2" stroke-linecap="round"/>
+            <line x1="44" y1="43" x2="52" y2="43" stroke="url(#heroGrad)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+            <line x1="44" y1="51" x2="50" y2="51" stroke="url(#heroGrad)" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+          </svg>
+        </div>
+        <h1 class="hero-title">
+          <span class="title-main">{{ t('app.title', language) }}</span>
+          <span class="title-sub">{{ t('app.subtitle', language) }}</span>
+        </h1>
+        <p class="hero-desc">
+          {{ language === 'zh'
+            ? '输入任意 GitHub 仓库，获得结构化学习文档、快速启动指南和 AI 问答支持'
+            : 'Enter any GitHub repository to get structured learning docs, quick start guides, and AI-powered Q&A support'
+          }}
+        </p>
+      </div>
     </div>
 
+    <!-- 输入区域 -->
     <el-card class="input-card">
-      <el-input
-        v-model="repoUrl"
-        :placeholder="t('home.inputPlaceholder', language)"
-        size="large"
-        :disabled="store.isAnalyzing"
-        @keyup.enter="handleAnalyze"
-      >
-        <template #prepend>{{ language === 'zh' ? '仓库 URL' : 'Repo URL' }}</template>
-      </el-input>
+      <div class="input-wrapper">
+        <div class="input-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+          </svg>
+        </div>
+        <el-input
+          v-model="repoUrl"
+          :placeholder="t('home.inputPlaceholder', language)"
+          size="large"
+          class="repo-input"
+          :disabled="store.isAnalyzing"
+          @keyup.enter="handleAnalyze"
+        />
+        <el-button
+          type="primary"
+          size="large"
+          class="analyze-btn"
+          :loading="store.isAnalyzing"
+          @click="handleAnalyze"
+        >
+          <span v-if="!store.isAnalyzing" class="btn-icon">✦</span>
+          {{ store.isAnalyzing ? t('home.analyzing', language) : t('home.analyzeBtn', language) }}
+        </el-button>
+      </div>
 
-      <el-radio-group v-model="analysisMode" class="mode-select" :disabled="store.isAnalyzing">
-        <el-radio value="fast">{{ t('home.fastMode', language) }}</el-radio>
-        <el-radio value="detailed">{{ t('home.detailedMode', language) }}</el-radio>
-      </el-radio-group>
-
-      <el-button
-        type="primary"
-        size="large"
-        class="analyze-btn"
-        :loading="store.isAnalyzing"
-        @click="handleAnalyze"
-      >
-        {{ store.isAnalyzing ? t('home.analyzing', language) : t('home.analyzeBtn', language) }}
-      </el-button>
+      <div class="input-options">
+        <el-radio-group v-model="analysisMode" class="mode-select" :disabled="store.isAnalyzing">
+          <el-radio-button value="fast">
+            <span class="mode-icon">⚡</span>
+            {{ t('home.fastMode', language) }}
+          </el-radio-button>
+          <el-radio-button value="detailed">
+            <span class="mode-icon">📖</span>
+            {{ t('home.detailedMode', language) }}
+          </el-radio-button>
+        </el-radio-group>
+      </div>
     </el-card>
 
     <!-- 进度面板 -->
-    <el-card v-if="store.isAnalyzing" class="progress-card">
-      <el-progress
-        :percentage="store.progress"
-        :status="store.isFailed ? 'exception' : undefined"
-        :stroke-width="20"
-      />
-      <p class="progress-message">{{ store.progressMessage }}</p>
-
-      <div class="stage-list">
-        <div
-          v-for="(stage, index) in stages"
-          :key="stage.key"
-          class="stage-item"
-          :class="{
-            'stage-completed': getStageIndex(store.stageKey) > index,
-            'stage-current': getStageIndex(store.stageKey) === index
-          }"
-        >
-          <span class="stage-icon">{{ getStageIndex(store.stageKey) > index ? '✅' : getStageIndex(store.stageKey) === index ? '🔄' : '⏳' }}</span>
-          {{ language === 'zh' ? stage.name : stage.nameEn }}
+    <transition name="progress-slide">
+      <el-card v-if="store.isAnalyzing" class="progress-card">
+        <div class="progress-header">
+          <span class="progress-title">{{ language === 'zh' ? '正在分析...' : 'Analyzing...' }}</span>
+          <el-button size="small" type="danger" text @click="handleCancel">
+            {{ language === 'zh' ? '取消' : 'Cancel' }}
+          </el-button>
         </div>
-      </div>
+        <el-progress
+          :percentage="store.progress"
+          :status="store.isFailed ? 'exception' : undefined"
+          :stroke-width="12"
+          :show-text="false"
+          class="custom-progress"
+        />
+        <p class="progress-message">{{ store.progressMessage }}</p>
 
-      <el-button type="danger" @click="handleCancel">{{ language === 'zh' ? '取消分析' : 'Cancel' }}</el-button>
-    </el-card>
-
-    <!-- 错误提示 -->
-    <el-alert v-if="store.error" :title="store.error" type="error" show-icon closable @close="store.error = ''" />
-
-    <!-- 示例仓库 -->
-    <el-card class="example-card">
-      <template #header>
-        <span>{{ t('home.examples', language) }}</span>
-      </template>
-      <div v-for="[repo, desc] in exampleRepos" :key="repo" class="example-item">
-        <span><strong>{{ repo }}</strong> - {{ language === 'zh' ? desc[0] : desc[1] }}</span>
-        <el-button size="small" :disabled="store.isAnalyzing" @click="handleExample(repo)">{{ language === 'zh' ? '试用' : 'Try' }}</el-button>
-      </div>
-    </el-card>
-
-    <!-- 已分析仓库 -->
-    <el-card class="saved-repos-card">
-      <template #header>
-        <div class="card-header">
-          <span>{{ language === 'zh' ? '📚 已分析仓库' : '📚 Saved Repositories' }}</span>
-          <el-button text @click="$router.push('/repositories')">{{ language === 'zh' ? '查看全部' : 'View All' }}</el-button>
-        </div>
-      </template>
-      <div v-if="savedRepos.length === 0" class="empty-text">{{ language === 'zh' ? '暂无已分析的仓库' : 'No saved repositories' }}</div>
-      <div v-else>
-        <div v-for="(item, index) in savedRepos.slice(0, 5)" :key="index" class="saved-repo-item">
-          <span><strong>{{ item.name || item.url }}</strong> ({{ formatDate(item.updated_at) }})</span>
-          <el-button size="small" :disabled="store.isAnalyzing" @click="viewSavedRepo(item)">{{ language === 'zh' ? '查看' : 'View' }}</el-button>
-        </div>
-      </div>
-    </el-card>
-
-    <!-- 历史记录 -->
-    <el-card class="history-card">
-      <template #header>
-        <div class="card-header">
-          <span>{{ t('home.history', language) }}</span>
-          <el-button v-if="history.length > 0" text @click="handleClearHistory">{{ t('home.clearHistory', language) }}</el-button>
-        </div>
-      </template>
-      <div v-if="history.length === 0" class="empty-text">{{ t('home.noHistory', language) }}</div>
-      <div v-else>
-        <div v-for="(item, index) in history.slice(0, 5)" :key="index" class="history-item">
-          <span><strong>{{ item.name }}</strong> ({{ item.timestamp?.slice(0, 10) }})</span>
-          <el-button size="small" :disabled="store.isAnalyzing" @click="handleHistory(item.url)">{{ t('home.reAnalyze', language) }}</el-button>
-        </div>
-      </div>
-    </el-card>
-
-    <!-- 收藏仓库 -->
-    <el-card class="favorites-card">
-      <template #header>
-        <span>{{ t('home.favorites', language) }}</span>
-      </template>
-      <div v-if="favorites.length === 0" class="empty-text">{{ t('home.noFavorites', language) }}</div>
-      <div v-else>
-        <div v-for="(item, index) in favorites" :key="index" class="favorite-item">
-          <span><strong>{{ item.name }}</strong> {{ item.language ? `_${item.language}_` : '' }}</span>
-          <div>
-            <el-button size="small" :disabled="store.isAnalyzing" @click="handleFavorite(item.url)">{{ t('home.viewDocs', language) }}</el-button>
-            <el-button size="small" type="danger" text @click="handleUnfavorite(item.url)">{{ t('home.remove', language) }}</el-button>
+        <div class="stage-list">
+          <div
+            v-for="(stage, index) in stages"
+            :key="stage.key"
+            class="stage-item"
+            :class="{
+              'stage-completed': getStageIndex(store.stageKey) > index,
+              'stage-current': getStageIndex(store.stageKey) === index
+            }"
+          >
+            <span class="stage-dot"></span>
+            <span class="stage-text">{{ language === 'zh' ? stage.name : stage.nameEn }}</span>
           </div>
         </div>
+      </el-card>
+    </transition>
+
+    <!-- 错误提示 -->
+    <transition name="fade">
+      <el-alert v-if="store.error" :title="store.error" type="error" show-icon closable @close="store.error = ''" class="error-alert" />
+    </transition>
+
+    <!-- 内容区域 -->
+    <div class="content-section">
+      <!-- 示例仓库 -->
+      <el-card class="example-card">
+        <template #header>
+          <div class="card-header">
+            <span class="card-icon">✦</span>
+            <span>{{ t('home.examples', language) }}</span>
+          </div>
+        </template>
+        <div class="example-list">
+          <div v-for="[repo, desc] in exampleRepos" :key="repo" class="example-item">
+            <div class="example-info">
+              <span class="example-name">{{ repo }}</span>
+              <span class="example-desc">{{ language === 'zh' ? desc[0] : desc[1] }}</span>
+            </div>
+            <el-button size="small" :disabled="store.isAnalyzing" @click="handleExample(repo)">
+              {{ language === 'zh' ? '试用' : 'Try' }}
+            </el-button>
+          </div>
+        </div>
+      </el-card>
+
+      <!-- 已有数据区 -->
+      <div class="data-cards">
+        <!-- 已分析仓库 -->
+        <el-card class="saved-repos-card">
+          <template #header>
+            <div class="card-header">
+              <span class="card-icon">📚</span>
+              <span>{{ language === 'zh' ? '已分析仓库' : 'Saved Repos' }}</span>
+              <el-button text @click="$router.push('/repositories')" class="view-all-btn">
+                {{ language === 'zh' ? '查看全部' : 'View All' }}
+              </el-button>
+            </div>
+          </template>
+          <div v-if="savedRepos.length === 0" class="empty-state-small">
+            <span class="empty-icon">📭</span>
+            <span>{{ language === 'zh' ? '暂无已分析的仓库' : 'No saved repositories' }}</span>
+          </div>
+          <div v-else class="item-list">
+            <div v-for="(item, index) in savedRepos.slice(0, 3)" :key="index" class="list-item">
+              <div class="item-info">
+                <span class="item-name">{{ item.name || item.url }}</span>
+                <span class="item-date">{{ formatDate(item.updated_at) }}</span>
+              </div>
+              <el-button size="small" :disabled="store.isAnalyzing" @click="viewSavedRepo(item)">
+                {{ language === 'zh' ? '查看' : 'View' }}
+              </el-button>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 收藏仓库 -->
+        <el-card class="favorites-card">
+          <template #header>
+            <div class="card-header">
+              <span class="card-icon">⭐</span>
+              <span>{{ t('home.favorites', language) }}</span>
+            </div>
+          </template>
+          <div v-if="favorites.length === 0" class="empty-state-small">
+            <span class="empty-icon">☆</span>
+            <span>{{ t('home.noFavorites', language) }}</span>
+          </div>
+          <div v-else class="item-list">
+            <div v-for="(item, index) in favorites.slice(0, 3)" :key="index" class="list-item">
+              <div class="item-info">
+                <span class="item-name">{{ item.name }}</span>
+                <el-tag v-if="item.language" size="small">{{ item.language }}</el-tag>
+              </div>
+              <div class="item-actions">
+                <el-button size="small" :disabled="store.isAnalyzing" @click="handleFavorite(item.url)">
+                  {{ t('home.viewDocs', language) }}
+                </el-button>
+                <el-button size="small" type="danger" text @click="handleUnfavorite(item.url)">×</el-button>
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 历史记录 -->
+        <el-card class="history-card">
+          <template #header>
+            <div class="card-header">
+              <span class="card-icon">📜</span>
+              <span>{{ t('home.history', language) }}</span>
+              <el-button v-if="history.length > 0" text @click="handleClearHistory" class="clear-btn">
+                {{ t('home.clearHistory', language) }}
+              </el-button>
+            </div>
+          </template>
+          <div v-if="history.length === 0" class="empty-state-small">
+            <span class="empty-icon">📋</span>
+            <span>{{ t('home.noHistory', language) }}</span>
+          </div>
+          <div v-else class="item-list">
+            <div v-for="(item, index) in history.slice(0, 3)" :key="index" class="list-item">
+              <div class="item-info">
+                <span class="item-name">{{ item.name }}</span>
+                <span class="item-date">{{ item.timestamp?.slice(0, 10) }}</span>
+              </div>
+              <el-button size="small" :disabled="store.isAnalyzing" @click="handleHistory(item.url)">
+                {{ t('home.reAnalyze', language) }}
+              </el-button>
+            </div>
+          </div>
+        </el-card>
       </div>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -335,108 +454,440 @@ onMounted(() => {
 
 <style scoped>
 .home {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 20px;
 }
 
-.header {
+/* 英雄区 */
+.hero {
   text-align: center;
-  margin-bottom: 30px;
-}
-
-.title {
-  font-size: 2.5em;
-  margin-bottom: 10px;
-}
-
-.subtitle {
-  color: var(--text-color-secondary, #666);
-  font-size: 1.2em;
-}
-
-.input-card {
+  padding: 40px 20px 50px;
+  position: relative;
   margin-bottom: 20px;
 }
 
-.input-card .el-input {
-  margin-bottom: 15px;
+.hero-decoration {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
 }
 
-.mode-select {
-  display: block;
-  margin-bottom: 15px;
+.deco-line {
+  position: absolute;
+  background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+  opacity: 0.15;
+  height: 1px;
+}
+
+.deco-line-1 {
+  width: 200px;
+  top: 30%;
+  left: -50px;
+  transform: rotate(-15deg);
+}
+
+.deco-line-2 {
+  width: 150px;
+  top: 60%;
+  right: -30px;
+  transform: rotate(20deg);
+}
+
+.deco-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  opacity: 0.2;
+}
+
+.deco-dot-1 {
+  top: 20%;
+  right: 15%;
+}
+
+.deco-dot-2 {
+  bottom: 25%;
+  left: 10%;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  animation: float-icon 6s ease-in-out infinite;
+}
+
+@keyframes float-icon {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.hero-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.hero-title {
+  margin: 0 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title-main {
+  font-family: 'Noto Serif SC', 'Crimson Pro', Georgia, serif;
+  font-size: 2.8em;
+  font-weight: 700;
+  color: var(--text-color);
+  letter-spacing: 0.02em;
+  background: linear-gradient(135deg, var(--text-color) 0%, var(--primary-color) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.title-sub {
+  font-size: 1.1em;
+  color: var(--text-color-secondary);
+  font-weight: 400;
+}
+
+.hero-desc {
+  color: var(--text-color-muted);
+  font-size: 15px;
+  max-width: 560px;
+  margin: 0 auto;
+  line-height: 1.8;
+}
+
+/* 输入卡片 */
+.input-card {
+  margin-bottom: 24px;
+  padding: 24px !important;
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.input-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-warm);
+  border-radius: var(--radius-md);
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.repo-input {
+  flex: 1;
+}
+
+.repo-input :deep(.el-input__wrapper) {
+  padding: 8px 16px !important;
 }
 
 .analyze-btn {
-  width: 100%;
+  flex-shrink: 0;
+  min-width: 140px;
+  height: 48px !important;
+  font-size: 15px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
+.btn-icon {
+  font-size: 16px;
+}
+
+.input-options {
+  display: flex;
+  justify-content: center;
+}
+
+.mode-select :deep(.el-radio-button__inner) {
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+.mode-select :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  border-color: var(--primary-color);
+  box-shadow: none;
+}
+
+.mode-icon {
+  margin-right: 6px;
+}
+
+/* 进度卡片 */
 .progress-card {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding: 20px 24px !important;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.progress-title {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.custom-progress {
+  margin-bottom: 16px;
 }
 
 .progress-message {
-  margin: 15px 0;
+  margin: 0 0 16px;
   text-align: center;
-  color: var(--primary-color, #409eff);
+  color: var(--primary-color);
+  font-size: 14px;
 }
 
 .stage-list {
-  margin-bottom: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-bottom: 8px;
 }
 
 .stage-item {
-  padding: 5px 0;
-  color: #999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-color-muted);
+  transition: all var(--transition-normal);
+}
+
+.stage-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-color);
+  transition: all var(--transition-normal);
 }
 
 .stage-completed {
-  color: #67c23a;
+  color: var(--success-color);
+}
+
+.stage-completed .stage-dot {
+  background: var(--success-color);
+  box-shadow: 0 0 8px rgba(107, 142, 107, 0.4);
 }
 
 .stage-current {
-  color: var(--primary-color, #409eff);
+  color: var(--primary-color);
 }
 
-.stage-icon {
-  margin-right: 8px;
+.stage-current .stage-dot {
+  background: var(--primary-color);
+  animation: pulse-dot 1.5s ease-in-out infinite;
 }
 
-.example-card,
-.history-card,
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+/* 错误提示 */
+.error-alert {
+  margin-bottom: 24px;
+}
+
+/* 内容区域 */
+.content-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 示例卡片 */
+.example-card {
+  padding: 0 !important;
+}
+
+.example-card :deep(.el-card__header) {
+  padding: 18px 24px !important;
+}
+
+.example-list {
+  padding: 8px 24px 20px;
+}
+
+.example-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--bg-warm);
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+  transition: all var(--transition-normal);
+}
+
+.example-item:last-child {
+  margin-bottom: 0;
+}
+
+.example-item:hover {
+  transform: translateX(4px);
+  box-shadow: var(--shadow-sm);
+}
+
+.example-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.example-name {
+  font-weight: 600;
+  color: var(--text-color);
+  font-family: 'Crimson Pro', monospace;
+  font-size: 15px;
+}
+
+.example-desc {
+  font-size: 13px;
+  color: var(--text-color-muted);
+}
+
+/* 数据卡片区域 */
+.data-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .data-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.saved-repos-card,
 .favorites-card,
-.saved-repos-card {
-  margin-bottom: 20px;
+.history-card {
+  padding: 0 !important;
 }
 
 .card-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
-.example-item,
-.history-item,
-.favorite-item,
-.saved-repo-item {
+.card-icon {
+  font-size: 16px;
+}
+
+.view-all-btn,
+.clear-btn {
+  margin-left: auto;
+  font-size: 13px;
+}
+
+.empty-state-small {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--text-color-muted);
+  font-size: 14px;
+}
+
+.empty-icon {
+  font-size: 24px;
+  opacity: 0.4;
+}
+
+.item-list {
+  padding: 8px 16px 16px;
+}
+
+.list-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-color, #eee);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
 }
 
-.example-item:last-child,
-.history-item:last-child,
-.favorite-item:last-child,
-.saved-repo-item:last-child {
+.list-item:last-child {
   border-bottom: none;
 }
 
-.empty-text {
-  color: var(--text-color-secondary, #999);
-  text-align: center;
-  padding: 20px;
+.item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.item-date {
+  font-size: 12px;
+  color: var(--text-color-muted);
+}
+
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 过渡动画 */
+.progress-slide-enter-active,
+.progress-slide-leave-active {
+  transition: all 0.4s ease;
+}
+
+.progress-slide-enter-from,
+.progress-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
