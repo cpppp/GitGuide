@@ -428,8 +428,11 @@ body {
 }
 
 .header-menu :deep(.el-menu-item):hover {
-  color: var(--text-color) !important;
-  background-color: transparent !important;
+  color: var(--primary-color) !important;
+  background: var(--bg-warm) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
 }
 
 .header-menu :deep(.el-menu-item):hover::before {

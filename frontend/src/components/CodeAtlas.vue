@@ -1,10 +1,5 @@
 <template>
   <div class="code-atlas">
-    <div class="atlas-header">
-      <span class="atlas-icon">🗺</span>
-      <span class="atlas-title">{{ language === 'zh' ? '代码图谱' : 'Code Atlas' }}</span>
-    </div>
-
     <el-tabs v-model="activeSubTab" class="atlas-tabs">
       <el-tab-pane name="tree">
         <template #label>

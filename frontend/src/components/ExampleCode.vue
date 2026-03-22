@@ -1,10 +1,5 @@
 <template>
   <div class="example-code">
-    <div class="example-header-bar">
-      <span class="bar-icon">💡</span>
-      <span class="bar-title">{{ language === 'zh' ? '示例代码' : 'Example Code' }}</span>
-    </div>
-
     <div v-if="loading" class="loading">
       <span class="loading-spinner"></span>
       <span>{{ language === 'zh' ? '加载示例代码...' : 'Loading examples...' }}</span>

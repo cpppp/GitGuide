@@ -1,6 +1,5 @@
 <template>
   <div class="chat">
-    <!-- 空状态 -->
     <div v-if="!store.result" class="empty-state">
       <div class="empty-illustration">
         <svg viewBox="0 0 120 120" class="empty-svg">
@@ -23,7 +22,6 @@
     </div>
 
     <div v-else class="chat-container">
-      <!-- 顶部导航 -->
       <div class="chat-header">
         <div class="header-left">
           <el-button text class="nav-btn" @click="$router.push('/')">
@@ -40,23 +38,27 @@
           </h1>
         </div>
         <div class="header-right">
-          <el-button v-if="messages.length > 0" text class="clear-btn" @click="handleClearHistory">
+          <el-button text class="clear-btn" @click="handleClearHistory">
             <span class="clear-icon">🗑</span>
           </el-button>
         </div>
       </div>
 
-      <!-- 仓库信息 -->
       <div class="repo-info-bar">
         <div class="repo-badge">
           <span class="badge-icon">📁</span>
           <span class="badge-text">{{ store.result?.repo_info?.full_name }}</span>
         </div>
+        <div class="knowledge-status" v-if="isIndexing">
+          <el-tag type="info" size="small">
+            <span class="status-icon">⏳</span>
+            {{ language === 'zh' ? '正在构建索引...' : 'Building index...' }}
+          </el-tag>
+        </div>
       </div>
 
-      <!-- 消息区域 -->
       <div class="messages" ref="messagesRef">
-        <div v-if="messages.length === 0" class="welcome-message">
+        <div v-if="messages.length === 0 && !isIndexing && !isLoading" class="welcome-message">
           <div class="welcome-icon">
             <svg viewBox="0 0 60 60" width="60" height="60">
               <defs>
@@ -75,10 +77,16 @@
           <p class="welcome-text">{{ language === 'zh' ? '你好！我是 GitGuide AI 助手。' : 'Hello! I am GitGuide AI Assistant.' }}</p>
           <p class="welcome-hint">{{ language === 'zh' ? '你可以问我关于这个项目的问题，例如：' : 'You can ask me questions about this project, for example:' }}</p>
           <ul class="example-list">
-            <li>{{ language === 'zh' ? '如何安装这个项目？' : 'How to install this project?' }}</li>
-            <li>{{ language === 'zh' ? '这个项目的主要功能是什么？' : 'What are the main features?' }}</li>
-            <li>{{ language === 'zh' ? '如何运行这个项目？' : 'How to run this project?' }}</li>
+            <li @click="handleExampleClick(0)">{{ language === 'zh' ? '如何安装这个项目？' : 'How to install this project?' }}</li>
+            <li @click="handleExampleClick(1)">{{ language === 'zh' ? '这个项目的主要功能是什么？' : 'What are the main features?' }}</li>
+            <li @click="handleExampleClick(2)">{{ language === 'zh' ? '分析 main.py 文件' : 'Analyze main.py file' }}</li>
           </ul>
+        </div>
+
+        <div v-if="isIndexing" class="indexing-message">
+          <div class="indexing-icon">🔍</div>
+          <p>{{ language === 'zh' ? '正在构建源码索引，请稍候...' : 'Building source code index, please wait...' }}</p>
+          <p class="indexing-hint">{{ language === 'zh' ? '首次加载可能需要几分钟' : 'First load may take a few minutes' }}</p>
         </div>
 
         <transition-group name="message" tag="div">
@@ -94,6 +102,17 @@
             </div>
             <div class="message-bubble">
               <div class="message-content" v-html="msg.renderedContent"></div>
+              <div class="referenced-files" v-if="msg.role === 'assistant' && msg.referencedFiles && msg.referencedFiles.length > 0">
+                <span class="ref-label">{{ language === 'zh' ? '引用文件：' : 'Referenced files:' }}</span>
+                <span
+                  v-for="file in msg.referencedFiles"
+                  :key="file"
+                  class="ref-file"
+                  @click="openFileViewer(file)"
+                >
+                  📄 {{ file }}
+                </span>
+              </div>
             </div>
           </div>
         </transition-group>
@@ -113,37 +132,61 @@
         </div>
       </div>
 
-      <!-- 输入区域 -->
       <div class="input-area">
         <div class="input-wrapper">
+          <div class="file-hint" v-if="detectedFile">
+            <span class="hint-icon">📎</span>
+            <span class="hint-text">{{ language === 'zh' ? '检测到文件：' : 'Detected file:' }} {{ detectedFile }}</span>
+            <el-button text size="small" @click="clearDetectedFile">✕</el-button>
+          </div>
           <el-input
             v-model="inputMessage"
             :placeholder="t('chat.placeholder', language)"
-            :disabled="isLoading"
+            :disabled="isLoading || isIndexing"
             class="chat-input"
             @keyup.enter="handleSend"
           >
             <template #append>
-              <el-button :loading="isLoading" class="send-btn" @click="handleSend">
-                <span v-if="!isLoading" class="send-icon">➤</span>
-              </el-button>
+              <div class="input-actions">
+                <el-button
+                  v-if="isLoading"
+                  class="action-btn stop-btn"
+                  @click="handleStop"
+                  :title="language === 'zh' ? '停止思考' : 'Stop thinking'"
+                >
+                  <span class="stop-icon">⏹</span>
+                </el-button>
+                <el-button
+                  v-else
+                  class="action-btn send-btn"
+                  @click="handleSend"
+                  :disabled="isIndexing || !inputMessage.trim()"
+                >
+                  <span class="send-icon">🚀</span>
+                </el-button>
+              </div>
             </template>
           </el-input>
         </div>
 
-        <!-- 快捷问题 -->
-        <div class="quick-questions">
+        <div class="quick-questions" v-if="!isIndexing">
           <el-button
-            v-for="q in quickQuestions"
-            :key="q.zh"
+            v-for="(q, index) in quickQuestions"
+            :key="index"
             size="small"
             class="quick-btn"
-            @click="inputMessage = language === 'zh' ? q.zh : q.en"
+            @click="handleExampleClick(index)"
           >
             {{ language === 'zh' ? q.zh : q.en }}
           </el-button>
         </div>
       </div>
+
+      <CodeViewer
+        v-model="showCodeViewer"
+        :file-path="selectedFile"
+        :repo-url="store.repoUrl"
+      />
     </div>
   </div>
 </template>
@@ -154,11 +197,12 @@ import { useRouter } from 'vue-router'
 import { useAnalysisStore } from '@/stores/analysis'
 import { useSettingsStore } from '@/stores/settings'
 import { storeToRefs } from 'pinia'
-import { sendChat, getChatHistory, clearChatHistory } from '@/api/chat'
+import { sendChat, getChatHistory, clearChatHistory, buildKnowledgeBase as buildKB } from '@/api/chat'
 import { ElMessage } from 'element-plus'
 import { t } from '@/i18n'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import CodeViewer from '@/components/CodeViewer.vue'
 
 const router = useRouter()
 const store = useAnalysisStore()
@@ -168,32 +212,71 @@ const { language } = storeToRefs(settingsStore)
 const inputMessage = ref('')
 const messages = ref([])
 const isLoading = ref(false)
+const isIndexing = ref(false)
 const messagesRef = ref(null)
+const knowledgeBaseReady = ref(false)
+const showCodeViewer = ref(false)
+const selectedFile = ref('')
+const detectedFile = ref('')
 
 const renderedMessages = computed(() => {
   return messages.value.map(msg => ({
     ...msg,
-    renderedContent: msg.role === 'assistant' 
-      ? DOMPurify.sanitize(marked(msg.content))
+    renderedContent: msg.role === 'assistant'
+      ? DOMPurify.sanitize(marked(msg.content || ''))
       : msg.content
   }))
 })
 
-// 快捷问题: [中文, 英文]
 const quickQuestions = [
   { zh: '如何安装这个项目？', en: 'How to install this project?' },
-  { zh: '如何运行这个项目？', en: 'How to run this project?' },
-  { zh: '这个项目的主要功能是什么？', en: 'What are the main features of this project?' },
-  { zh: '项目使用了什么技术栈？', en: 'What tech stack does this project use?' }
+  { zh: '这个项目的主要功能是什么？', en: 'What are the main features?' },
+  { zh: '分析 main.py 文件', en: 'Analyze main.py file' }
 ]
 
+const exampleQuestions = [
+  { zh: '如何安装这个项目？', en: 'How to install this project?' },
+  { zh: '这个项目的主要功能是什么？', en: 'What are the main features?' },
+  { zh: '分析 main.py 文件', en: 'Analyze main.py file' }
+]
+
+function extractFilePath(query) {
+  const patterns = [
+    /(?:analyze|分析|查看|look at|show me)\s+([^\s]+\.(?:py|js|ts|jsx|tsx|java|go|rs|cpp|c|h|hpp|cs|rb|php|swift|kt|scala))/i,
+    /([^\s]+\.(?:py|js|ts|jsx|tsx|java|go|rs|cpp|c|h|hpp|cs|rb|php|swift|kt|scala))/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = query.match(pattern)
+    if (match) {
+      return match[1]
+    }
+  }
+  return null
+}
+
+function handleExampleClick(index) {
+  if (isIndexing.value || isLoading.value) return
+
+  const q = exampleQuestions[index]
+  if (!q) return
+
+  const question = language.value === 'zh' ? q.zh : q.en
+  inputMessage.value = question
+
+  nextTick(() => {
+    handleSend()
+  })
+}
+
 async function handleSend() {
-  if (!inputMessage.value.trim() || isLoading.value) return
+  if (!inputMessage.value.trim() || isLoading.value || isIndexing.value) return
 
   const query = inputMessage.value.trim()
   inputMessage.value = ''
 
-  // 添加用户消息
+  detectedFile.value = extractFilePath(query) || ''
+
   messages.value.push({ role: 'user', content: query })
   scrollToBottom()
 
@@ -205,20 +288,45 @@ async function handleSend() {
       content: m.content
     }))
 
-    const response = await sendChat(store.repoUrl, query, history)
+    const response = await sendChat(
+      store.repoUrl,
+      query,
+      history,
+      detectedFile.value || null
+    )
 
     if (response.data.success) {
-      messages.value.push({ role: 'assistant', content: response.data.response })
+      messages.value.push({
+        role: 'assistant',
+        content: response.data.response,
+        referencedFiles: response.data.referenced_files || []
+      })
     } else {
       ElMessage.error(response.data.response)
-      messages.value.push({ role: 'assistant', content: language.value === 'zh' ? '抱歉，我遇到了问题，请稍后重试。' : 'Sorry, I encountered an issue. Please try again later.' })
+      messages.value.push({
+        role: 'assistant',
+        content: language.value === 'zh' ? '抱歉，我遇到了问题，请稍后重试。' : 'Sorry, I encountered an issue. Please try again later.'
+      })
     }
   } catch (e) {
     ElMessage.error(language.value === 'zh' ? '请求失败: ' : 'Request failed: ' + (e.response?.data?.detail || e.message))
-    messages.value.push({ role: 'assistant', content: language.value === 'zh' ? '抱歉，服务出错了。' : 'Sorry, an error occurred.' })
+    messages.value.push({
+      role: 'assistant',
+      content: language.value === 'zh' ? '抱歉，服务出错了。' : 'Sorry, an error occurred.'
+    })
   }
 
   isLoading.value = false
+  detectedFile.value = ''
+  scrollToBottom()
+}
+
+function handleStop() {
+  isLoading.value = false
+  messages.value.push({
+    role: 'assistant',
+    content: language.value === 'zh' ? '思考已中止。请尝试其他问题。' : 'Thinking stopped. Please try another question.'
+  })
   scrollToBottom()
 }
 
@@ -233,7 +341,7 @@ function scrollToBottom() {
 async function handleClearHistory() {
   try {
     const { ElMessageBox } = await import('element-plus')
-    
+
     await ElMessageBox.confirm(
       language.value === 'zh' ? '确定要清除所有对话记录吗？' : 'Are you sure to clear all chat history?',
       language.value === 'zh' ? '确认清除' : 'Confirm Clear',
@@ -243,7 +351,7 @@ async function handleClearHistory() {
         type: 'warning'
       }
     )
-    
+
     await clearChatHistory(store.repoUrl)
     messages.value = []
     ElMessage.success(language.value === 'zh' ? '对话记录已清除' : 'Chat history cleared')
@@ -254,11 +362,41 @@ async function handleClearHistory() {
   }
 }
 
+async function buildKnowledgeBase() {
+  isIndexing.value = true
+
+  try {
+    const response = await buildKB(store.repoUrl)
+    if (response.data.success) {
+      knowledgeBaseReady.value = true
+    } else {
+      knowledgeBaseReady.value = true
+      console.warn('Knowledge base build warning:', response.data.error)
+    }
+  } catch (e) {
+    console.warn('Knowledge base build failed, will use fallback:', e)
+    knowledgeBaseReady.value = true
+  } finally {
+    isIndexing.value = false
+  }
+}
+
+function openFileViewer(file) {
+  selectedFile.value = file
+  showCodeViewer.value = true
+}
+
+function clearDetectedFile() {
+  detectedFile.value = ''
+}
+
 onMounted(async () => {
   if (!store.result) {
     ElMessage.warning(language.value === 'zh' ? '请先分析仓库' : 'Please analyze a repo first')
     router.push('/')
   } else {
+    buildKnowledgeBase()
+
     try {
       const response = await getChatHistory(store.repoUrl)
       if (response.data.messages) {
@@ -281,7 +419,6 @@ onMounted(async () => {
   flex-direction: column;
 }
 
-/* 空状态 */
 .empty-state {
   flex: 1;
   display: flex;
@@ -302,7 +439,6 @@ onMounted(async () => {
   height: 100%;
 }
 
-/* 聊天容器 */
 .chat-container {
   flex: 1;
   display: flex;
@@ -314,7 +450,6 @@ onMounted(async () => {
   box-shadow: var(--shadow-sm);
 }
 
-/* 聊天头部 */
 .chat-header {
   display: flex;
   align-items: center;
@@ -385,11 +520,13 @@ onMounted(async () => {
   background: rgba(166, 93, 93, 0.1) !important;
 }
 
-/* 仓库信息栏 */
 .repo-info-bar {
   padding: 12px 20px;
   background: var(--bg-color);
   border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .repo-badge {
@@ -412,7 +549,15 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-/* 消息区域 */
+.knowledge-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-icon {
+  margin-right: 4px;
+}
+
 .messages {
   flex: 1;
   overflow-y: auto;
@@ -422,7 +567,6 @@ onMounted(async () => {
   gap: 16px;
 }
 
-/* 欢迎消息 */
 .welcome-message {
   display: flex;
   flex-direction: column;
@@ -463,6 +607,8 @@ onMounted(async () => {
   flex-direction: column;
   gap: 10px;
   text-align: left;
+  width: 100%;
+  max-width: 300px;
 }
 
 .example-list li {
@@ -472,6 +618,7 @@ onMounted(async () => {
   font-size: 14px;
   color: var(--primary-color);
   transition: all var(--transition-normal);
+  cursor: pointer;
 }
 
 .example-list li:hover {
@@ -480,7 +627,35 @@ onMounted(async () => {
   transform: translateX(4px);
 }
 
-/* 消息 */
+.indexing-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  color: var(--text-color-secondary);
+}
+
+.indexing-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(0.95); }
+}
+
+.indexing-message p {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.indexing-hint {
+  font-size: 13px;
+  color: var(--text-color-muted);
+}
+
 .message {
   display: flex;
   gap: 12px;
@@ -574,7 +749,36 @@ onMounted(async () => {
   margin: 8px 0;
 }
 
-/* 加载状态 */
+.referenced-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+
+.ref-label {
+  font-size: 12px;
+  color: var(--text-color-muted);
+  line-height: 24px;
+}
+
+.ref-file {
+  font-size: 12px;
+  color: var(--primary-color);
+  cursor: pointer;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.ref-file:hover {
+  background: var(--primary-color);
+  color: #fff;
+}
+
 .loading-bubble {
   display: flex;
   align-items: center;
@@ -608,7 +812,6 @@ onMounted(async () => {
   color: var(--text-color-muted);
 }
 
-/* 输入区域 */
 .input-area {
   padding: 16px 20px 20px;
   background: var(--bg-warm);
@@ -619,6 +822,27 @@ onMounted(async () => {
   margin-bottom: 12px;
 }
 
+.file-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-color-secondary);
+}
+
+.hint-icon {
+  font-size: 14px;
+}
+
+.hint-text {
+  flex: 1;
+  font-family: 'Crimson Pro', monospace;
+}
+
 .chat-input {
   width: 100%;
 }
@@ -627,19 +851,57 @@ onMounted(async () => {
   padding: 6px 12px !important;
 }
 
-.send-btn {
+.action-btn {
   min-width: 44px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  transition: all 0.2s ease;
+}
+
+.send-btn {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)) !important;
+}
+
+.send-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.send-btn:disabled {
+  opacity: 0.6;
 }
 
 .send-icon {
   font-size: 16px;
-  color: var(--primary-color);
+  color: #fff;
 }
 
-/* 快捷问题 */
+.input-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  background: transparent !important;
+}
+
+.stop-btn {
+  background: var(--danger-color) !important;
+}
+
+.stop-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stop-icon {
+  font-size: 14px;
+  color: #fff;
+}
+
 .quick-questions {
   display: flex;
   flex-wrap: wrap;
@@ -659,7 +921,6 @@ onMounted(async () => {
   color: var(--primary-color) !important;
 }
 
-/* 消息过渡动画 */
 .message-enter-active {
   transition: all 0.3s ease;
 }

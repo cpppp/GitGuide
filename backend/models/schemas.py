@@ -46,6 +46,7 @@ class ChatRequest(BaseModel):
     repo_url: str = Field(..., description="GitHub 仓库 URL")
     query: str = Field(..., description="用户问题")
     history: Optional[List[ChatMessage]] = Field(default_factory=list, description="聊天历史")
+    file_path: Optional[str] = Field(default=None, description="指定要分析的文件路径")
 
 
 class ChatResponse(BaseModel):
@@ -53,6 +54,8 @@ class ChatResponse(BaseModel):
     success: bool
     response: str
     repo_url: str
+    referenced_files: Optional[List[str]] = Field(default_factory=list, description="引用的文件列表")
+    analyzed_file: Optional[str] = Field(default=None, description="分析的文件路径")
 
 
 class HistoryItem(BaseModel):

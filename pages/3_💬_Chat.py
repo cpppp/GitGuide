@@ -44,7 +44,7 @@ if prompt := st.chat_input("问关于这个项目的问题..."):
     # 生成 AI 回答
     with st.chat_message("assistant"):
         try:
-            from agents.chat import run_chat
+            from agents.chat_agent import run_chat
 
             # 获取聊天历史（只保留最近10条，避免上下文过长）
             chat_history = st.session_state.messages[-10:] if len(st.session_state.messages) > 10 else st.session_state.messages
@@ -93,7 +93,7 @@ with st.sidebar:
             # 生成 AI 回答
             with st.chat_message("assistant"):
                 try:
-                    from agents.chat import run_chat
+                    from agents.chat_agent import run_chat
 
                     chat_history = st.session_state.messages[:-1][-10:]
 
