@@ -169,7 +169,7 @@ async def run_analysis_async(job_id: str, repo_url: str):
         ws_manager = WebSocketManager()
 
     # 任务超时设置（秒）- 防止任务永久卡住
-    TASK_TIMEOUT = 600  # 10分钟
+    TASK_TIMEOUT = None  # 不设置超时限制，由用户手动取消
 
     try:
         # 设置取消检查器
@@ -209,10 +209,13 @@ async def run_analysis_async(job_id: str, repo_url: str):
         # 使用快速模式
         loop = asyncio.get_event_loop()
         try:
-            result = await asyncio.wait_for(
-                loop.run_in_executor(None, run_fast, repo_url, fast_progress_callback),
-                timeout=TASK_TIMEOUT
-            )
+            if TASK_TIMEOUT:
+                result = await asyncio.wait_for(
+                    loop.run_in_executor(None, run_fast, repo_url, fast_progress_callback),
+                    timeout=TASK_TIMEOUT
+                )
+            else:
+                result = await loop.run_in_executor(None, run_fast, repo_url, fast_progress_callback)
         except asyncio.TimeoutError:
             result = {"success": False, "error": f"任务超时（{TASK_TIMEOUT}秒），请重试或使用更小的仓库"}
 

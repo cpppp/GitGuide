@@ -1,30 +1,30 @@
 # 技术栈文档：GitGuide
 
 > **文档版本**：v3.2\
-> **最后更新**：2026-03-21\
-> **更新说明**：新增 AI 问答功能技术选型（方案 C：Chroma + HuggingFace 本地 Embeddings）
+> **最后更新**：2026-03-22\
+> **更新说明**：V3.2 完成，更新 AI 问答技术栈和前端依赖
 
 ***
 
 ## 1. 技术栈总览
 
-| 层级 | 技术选择 | 版本 |
-|------|----------|------|
-| **前端框架** | Vue 3 | 3.4+ |
-| **前端 UI** | Element Plus | 2.5+ |
-| **前端构建** | Vite | 5.0+ |
-| **前端状态管理** | Pinia | 2.1+ |
-| **前端路由** | Vue Router | 4.2+ |
-| **后端框架** | FastAPI | 0.109+ |
-| **Agent 框架** | LangChain | 1.0+ |
-| **LLM** | OpenAI API / 智谱 GLM | GPT-4 / glm-4 |
-| **仓库分析** | GitPython + PyGithub | GitPython 3.1+ |
-| **数据库** | SQLite / PostgreSQL | SQLite 3.x |
-| **ORM** | SQLAlchemy | 2.0+ |
-| **实时通信** | WebSocket | FastAPI 内置 |
-| **缓存** | Redis | 7.0+ |
-| **向量数据库** | Chroma | - |
-| **Embedding** | HuggingFaceEmbeddings | 本地模型 |
+| 层级            | 技术选择                  | 版本             |
+| ------------- | --------------------- | -------------- |
+| **前端框架**      | Vue 3                 | 3.4+           |
+| **前端 UI**     | Element Plus          | 2.5+           |
+| **前端构建**      | Vite                  | 5.0+           |
+| **前端状态管理**    | Pinia                 | 2.1+           |
+| **前端路由**      | Vue Router            | 4.2+           |
+| **后端框架**      | FastAPI               | 0.109+         |
+| **Agent 框架**  | LangChain             | 1.0+           |
+| **LLM**       | OpenAI API / 智谱 GLM   | GPT-4 / glm-4  |
+| **仓库分析**      | GitPython + PyGithub  | GitPython 3.1+ |
+| **数据库**       | SQLite / PostgreSQL   | SQLite 3.x     |
+| **ORM**       | SQLAlchemy            | 2.0+           |
+| **实时通信**      | WebSocket             | FastAPI 内置     |
+| **缓存**        | Redis                 | 7.0+           |
+| **向量数据库**     | Chroma                | -              |
+| **Embedding** | HuggingFaceEmbeddings | 本地模型           |
 
 ## 2. 前端技术栈
 
@@ -33,6 +33,7 @@
 #### Vue 3 + Element Plus
 
 **选择理由：**
+
 - **Composition API**：Vue 3 的组合式 API 使代码组织更灵活
 - **Element Plus**：国内生态最完善的 UI 组件库，文档友好
 - **Vite**：极快的开发启动和热更新体验
@@ -65,7 +66,9 @@
     "axios": "^1.6.0",
     "marked": "^11.0.0",
     "highlight.js": "^11.9.0",
-    "dompurify": "^3.3.3"
+    "dompurify": "^3.3.3",
+    "prismjs": "^1.29.0",
+    "mermaid": "^11.0.0"
   },
   "devDependencies": {
     "vite": "^5.0.0",
@@ -76,17 +79,19 @@
 
 ### 2.3 前端模块说明
 
-| 依赖 | 用途 |
-|------|------|
-| vue | 核心框架 |
-| vue-router | 路由管理 |
-| pinia | 状态管理 |
-| element-plus | UI 组件库 |
-| @element-plus/icons-vue | 图标库 |
-| axios | HTTP 请求 |
-| marked | Markdown 渲染 |
-| highlight.js | 代码高亮 |
-| dompurify | HTML 净化（XSS 防护） |
+| 依赖                      | 用途              |
+| ----------------------- | --------------- |
+| vue                     | 核心框架            |
+| vue-router              | 路由管理            |
+| pinia                   | 状态管理            |
+| element-plus            | UI 组件库          |
+| @element-plus/icons-vue | 图标库             |
+| axios                   | HTTP 请求         |
+| marked                  | Markdown 渲染     |
+| highlight.js            | 代码高亮            |
+| dompurify               | HTML 净化（XSS 防护） |
+| prismjs                 | 代码语法高亮          |
+| mermaid                 | 架构图渲染           |
 
 ## 3. 后端技术栈
 
@@ -95,6 +100,7 @@
 #### FastAPI
 
 **选择理由：**
+
 - **高性能**：基于 Starlette 和 Pydantic，性能接近 Node.js
 - **异步支持**：原生支持 async/await
 - **自动文档**：自动生成 OpenAPI 文档
@@ -165,29 +171,30 @@ streamlit-extras>=0.4.0
 
 ### 3.3 后端模块说明
 
-| 依赖 | 用途 |
-|------|------|
-| fastapi | Web 框架 |
-| uvicorn | ASGI 服务器 |
-| langchain | Agent 框架 |
-| langchain-openai | OpenAI 集成 |
-| langgraph | 工作流图 |
-| openai | LLM API |
-| chromadb | 向量数据库 |
+| 依赖                    | 用途              |
+| --------------------- | --------------- |
+| fastapi               | Web 框架          |
+| uvicorn               | ASGI 服务器        |
+| langchain             | Agent 框架        |
+| langchain-openai      | OpenAI 集成       |
+| langgraph             | 工作流图            |
+| openai                | LLM API         |
+| chromadb              | 向量数据库           |
 | sentence-transformers | 本地 Embedding 模型 |
-| GitPython | Git 操作 |
-| PyGithub | GitHub API |
-| pydantic | 数据验证 |
-| sqlalchemy | ORM |
-| alembic | 数据库迁移 |
-| redis | 缓存/任务队列 |
-| rq | 任务队列 |
+| GitPython             | Git 操作          |
+| PyGithub              | GitHub API      |
+| pydantic              | 数据验证            |
+| sqlalchemy            | ORM             |
+| alembic               | 数据库迁移           |
+| redis                 | 缓存/任务队列         |
+| rq                    | 任务队列            |
 
 ## 4. Agent 框架
 
-### 4.1 LangChain + LangGraph
+### 4.1 LangChain + LangGraph （当前未应用）
 
 **选择理由：**
+
 - **多 Agent 协作**：LangGraph 支持构建复杂的多 Agent 工作流
 - **工具调用**：内置 Tool 机制，方便 Agent 调用外部 API 和函数
 - **状态管理**：LangGraph 提供图状状态机，管理 Agent 间通信
@@ -216,12 +223,12 @@ streamlit-extras>=0.4.0
 
 ### 4.3 Agent 职责
 
-| Agent | 职责 | 输入 | 输出 |
-|-------|------|------|------|
-| **Orchestrator** | 协调各 Agent，管理整体流程 | 用户 URL | 最终结果 |
-| **Analyzer** | 分析仓库结构、识别项目类型 | 仓库 URL | 分析结果 |
-| **DocGen** | 生成学习文档、启动指南 | 分析结果 | 文档内容 |
-| **Chat** | 回答用户问题、解释代码 | 问题 + 上下文 | 回答内容 |
+| Agent            | 职责               | 输入       | 输出   |
+| ---------------- | ---------------- | -------- | ---- |
+| **Orchestrator** | 协调各 Agent，管理整体流程 | 用户 URL   | 最终结果 |
+| **Analyzer**     | 分析仓库结构、识别项目类型    | 仓库 URL   | 分析结果 |
+| **DocGen**       | 生成学习文档、启动指南      | 分析结果     | 文档内容 |
+| **Chat**         | 回答用户问题、解释代码      | 问题 + 上下文 | 回答内容 |
 
 ## 5. 数据库
 
@@ -230,11 +237,13 @@ streamlit-extras>=0.4.0
 **选择理由：**
 
 **SQLite：**
+
 - 零配置，无需独立服务器
 - 适合 MVP 和中小规模应用
 - 单文件存储，易于备份和迁移
 
 **PostgreSQL：**
+
 - 生产环境首选
 - 支持高并发和复杂查询
 - 丰富的数据类型和扩展
@@ -269,6 +278,7 @@ streamlit-extras>=0.4.0
 ### 5.3 SQLAlchemy ORM
 
 **选择理由：**
+
 - **成熟稳定**：Python 最流行的 ORM 框架
 - **类型安全**：2.0 版本支持完整的类型提示
 - **异步支持**：支持 async/await 模式
@@ -279,6 +289,7 @@ streamlit-extras>=0.4.0
 ### 6.1 Redis
 
 **选择理由：**
+
 - **高性能缓存**：内存数据库，读写速度极快
 - **任务队列**：支持 RQ 后台任务处理
 - **实时进度**：通过任务元数据实现真正的进度反馈
@@ -301,12 +312,14 @@ streamlit-extras>=0.4.0
 ### 7.1 OpenAI API / 智谱 GLM
 
 **选择理由：**
+
 - **效果最佳**：GPT-4 在代码理解和生成方面表现最优
 - **LangChain 原生支持**：无缝集成，开箱即用
 - **Function Calling**：支持 Agent 工具调用
 - **成本可控**：按使用量计费，MVP 阶段成本较低
 
 **替代方案：**
+
 - Claude API：代码能力接近，LangChain 同样支持
 - 开源模型（Ollama + LLaMA/Qwen）：本地部署，隐私性好
 
@@ -314,23 +327,23 @@ streamlit-extras>=0.4.0
 
 ### 8.1 技术选型
 
-| 组件 | 技术 | 说明 |
-|:---|:---|:---|
-| **向量数据库** | Chroma | 轻量级本地存储，无需额外服务 |
-| **Embedding** | HuggingFaceEmbeddings | 本地模型，零 API 成本 |
-| **模型选择** | sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 | 多语言支持，中文友好 |
-| **对话管理** | ConversationBufferMemory | 多轮对话历史管理 |
-| **检索策略** | MMR | 最大边际相关性，提高检索多样性 |
+| 组件            | 技术                                                          | 说明              |
+| :------------ | :---------------------------------------------------------- | :-------------- |
+| **向量数据库**     | Chroma                                                      | 轻量级本地存储，无需额外服务  |
+| **Embedding** | HuggingFaceEmbeddings                                       | 本地模型，零 API 成本   |
+| **模型选择**      | sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 | 多语言支持，中文友好      |
+| **对话管理**      | ConversationBufferMemory                                    | 多轮对话历史管理        |
+| **检索策略**      | MMR                                                         | 最大边际相关性，提高检索多样性 |
 
 ### 8.2 方案优势
 
-| 优势 | 说明 |
-|:---|:---|
+| 优势           | 说明                        |
+| :----------- | :------------------------ |
 | **零 API 成本** | 无需 OpenAI Embeddings，本地运行 |
-| **数据隐私** | 所有向量化在本地完成，无需上传数据 |
-| **响应更快** | 无网络延迟，本地计算 |
-| **中文支持** | 多语言模型，中英文效果均衡 |
-| **部署简单** | 无需额外向量数据库服务 |
+| **数据隐私**     | 所有向量化在本地完成，无需上传数据         |
+| **响应更快**     | 无网络延迟，本地计算                |
+| **中文支持**     | 多语言模型，中英文效果均衡             |
+| **部署简单**     | 无需额外向量数据库服务               |
 
 ### 8.3 Chat Agent 架构
 
@@ -368,17 +381,27 @@ streamlit-extras>=0.4.0
 
 ### 8.4 Embedding 模型对比
 
-| 模型 | 维度 | 语言支持 | 速度 | 适用场景 |
-|:---|:---|:---|:---|:---|
-| paraphrase-multilingual-MiniLM-L12-v2 | 384 | 多语言 | 快 | 通用场景，中文友好 |
-| all-MiniLM-L6-v2 | 384 | 英文 | 最快 | 纯英文项目 |
-| paraphrase-multilingual-mpnet-base-v2 | 768 | 多语言 | 中 | 高精度需求 |
+| 模型                                    | 维度  | 语言支持 | 速度 | 适用场景      |
+| :------------------------------------ | :-- | :--- | :- | :-------- |
+| all-MiniLM-L6-v2                      | 384 | 英文为主 | 最快 | 速度优先，免费高效 |
+| paraphrase-multilingual-MiniLM-L12-v2 | 384 | 多语言  | 快  | 通用场景，中文友好 |
+| paraphrase-multilingual-mpnet-base-v2 | 768 | 多语言  | 中  | 高精度需求     |
+
+### 8.5 当前使用模型
+
+**V3.2 采用** **`all-MiniLM-L6-v2`**：
+
+- HuggingFace sentence-transformers 模型
+- 384 维度，6 层轻量级设计
+- 免费、无需 API key、本地运行
+- 速度最快，适合效率优先场景
 
 ## 9. 仓库分析
 
 ### 9.1 GitPython + GitHub API
 
 **选择理由：**
+
 - **GitPython**：纯 Python 实现，无需依赖系统 git
 - **GitHub API**：官方 API，稳定可靠
 - **LangChain Tool 封装**：可作为 Agent 工具使用
@@ -443,15 +466,15 @@ CHROMA_PERSIST_DIR=./chroma_db
 
 ## 11. 技术风险与应对
 
-| 风险 | 影响 | 应对方案 |
-|------|------|----------|
-| OpenAI API 限流 | AI 功能不可用 | 实现请求队列、降级到 GPT-3.5、支持智谱 GLM |
-| GitHub API 限流 | 仓库分析失败 | 使用 Token 认证、缓存结果 |
-| 大仓库分析慢 | 用户体验差 | 显示进度条、并行处理、限制文件大小 |
-| 数据库性能瓶颈 | 查询变慢 | 添加索引、使用连接池、考虑分库分表 |
-| Agent 输出不稳定 | 文档质量波动 | 使用 structured output、添加校验逻辑 |
-| 并发问题 | 数据不一致 | 使用数据库事务、乐观锁 |
-| Embedding 模型加载慢 | 首次响应慢 | 模型预加载、缓存机制 |
+| 风险              | 影响       | 应对方案                        |
+| --------------- | -------- | --------------------------- |
+| OpenAI API 限流   | AI 功能不可用 | 实现请求队列、降级到 GPT-3.5、支持智谱 GLM |
+| GitHub API 限流   | 仓库分析失败   | 使用 Token 认证、缓存结果            |
+| 大仓库分析慢          | 用户体验差    | 显示进度条、并行处理、限制文件大小           |
+| 数据库性能瓶颈         | 查询变慢     | 添加索引、使用连接池、考虑分库分表           |
+| Agent 输出不稳定     | 文档质量波动   | 使用 structured output、添加校验逻辑 |
+| 并发问题            | 数据不一致    | 使用数据库事务、乐观锁                 |
+| Embedding 模型加载慢 | 首次响应慢    | 模型预加载、缓存机制                  |
 
 ## 12. 部署方案
 
@@ -474,7 +497,6 @@ cd frontend && npm install && npm run dev
   - 支持 FastAPI + PostgreSQL 一键部署
   - 自动 HTTPS 和域名
   - 简单的环境变量管理
-
 - **Docker**：
   - 完全自主控制
   - 易于扩展和迁移
@@ -500,6 +522,6 @@ cd frontend && npm install && npm run dev
 4. **数据库迁移**：Alembic 支持平滑升级
 5. **向量存储可替换**：Chroma 可替换为 Pinecone、Weaviate 等
 
----
+***
 
 *Last updated: 2026-03-21*

@@ -9,7 +9,7 @@
           {{ language === 'zh' ? '在线预览' : 'Preview Online' }}
         </el-button>
       </div>
-      <pre class="mermaid-code"><code>{{ mermaidCode }}</code></pre>
+      <div :id="diagramId" class="mermaid"></div>
     </div>
     <div v-else class="empty">
       {{ language === 'zh' ? '暂无架构图信息' : 'No architecture diagram available' }}
@@ -18,9 +18,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { storeToRefs } from 'pinia'
+import mermaid from 'mermaid'
 
 const props = defineProps({
   result: {
@@ -34,16 +35,65 @@ const { language } = storeToRefs(settingsStore)
 
 const copied = ref(false)
 
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  themeVariables: {
+    primaryColor: '#3d5a6c',
+    primaryTextColor: '#2c3e4a',
+    primaryBorderColor: '#3d5a6c',
+    lineColor: '#8b7355',
+    secondaryColor: '#c4a35a',
+    tertiaryColor: '#f5f5f5'
+  },
+  flowchart: {
+    useMaxWidth: true,
+    htmlLabels: true
+  }
+})
+
 const mermaidCode = computed(() => {
-  // 从结果中提取 mermaid 架构图代码
   if (props.result?.mermaid_architecture) {
     return props.result.mermaid_architecture
   }
-  // 如果没有预生成的架构图，根据目录结构生成
   if (props.result?.directory_structure) {
     return generateFromTree(props.result.directory_structure)
   }
   return null
+})
+
+const generateDiagramId = () => `mermaid-${Math.random().toString(36).substr(2, 9)}`
+const diagramId = ref(generateDiagramId())
+
+async function renderDiagram() {
+  if (!mermaidCode.value) return
+
+  await nextTick()
+
+  const container = document.getElementById(diagramId.value)
+  if (!container) {
+    console.warn('Mermaid container not found:', diagramId.value)
+    return
+  }
+
+  try {
+    const { svg } = await mermaid.render(
+      `mermaid-svg-${Date.now()}`,
+      mermaidCode.value
+    )
+    container.innerHTML = svg
+  } catch (error) {
+    console.error('Mermaid render error:', error)
+    container.innerHTML = `<pre class="mermaid-error">${mermaidCode.value}</pre>`
+  }
+}
+
+onMounted(() => {
+  renderDiagram()
+})
+
+watch(mermaidCode, () => {
+  renderDiagram()
 })
 
 function generateFromTree(directoryStructure) {
@@ -118,18 +168,22 @@ function openMermaidEditor() {
   margin-bottom: 15px;
 }
 
-.mermaid-code {
+.mermaid {
   background: var(--code-bg-color, #f5f5f5);
   padding: 15px;
   border-radius: 6px;
   overflow-x: auto;
-  font-family: 'Consolas', monospace;
-  font-size: 12px;
-  line-height: 1.5;
 }
 
-.mermaid-code code {
-  white-space: pre;
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-error {
+  color: var(--danger-color, #a6555d);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .empty {

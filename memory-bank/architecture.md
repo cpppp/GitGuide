@@ -98,7 +98,7 @@ GitGuide/
 │   ├── __init__.py
 │   ├── orchestrator.py         # 入口编排器
 │   ├── workflow.py             # 核心工作流（状态管理+并行调度+质量审核）
-│   ├── chat.py                 # Chat Agent 主入口（V3.2）
+│   ├── chat_agent.py          # Chat Agent 主入口（V3.2，原 chat.py 重命名避免循环导入）
 │   │
 │   ├── analyzers/              # Analyzer Team（分析团队）
 │   │   ├── __init__.py
@@ -110,19 +110,20 @@ GitGuide/
 │   ├── chat/                   # Chat Agent Team（V3.2新增）
 │   │   ├── __init__.py
 │   │   ├── source_code_indexer.py    # 源码索引构建器
-│   │   ├── knowledge_builder.py      # 知识库构建器
+│   │   ├── knowledge_builder.py      # 知识库构建器（Chroma + HuggingFace）
 │   │   ├── rag_retriever.py          # RAG检索增强
 │   │   └── conversation_manager.py   # 多轮对话管理
 │   │
 │   └── generators/             # Generator Team（生成团队）
 │       ├── __init__.py
-│       ├── quick_start_generator.py      (V3.0)
-│       ├── overview_generator.py         (V3.0)
-│       ├── architecture_generator.py     (V3.0)
-│       ├── install_guide_generator.py    (V3.0)
-│       ├── tutorial_generator.py         (V3.1新增)
-│       ├── dev_guide_generator.py        (V3.1新增)
-│       └── troubleshoot_generator.py     (V3.1新增)
+│       ├── base_generator.py          # 基类（V3.1）
+│       ├── quick_start_generator.py
+│       ├── overview_generator.py
+│       ├── architecture_generator.py
+│       ├── install_guide_generator.py
+│       ├── tutorial_generator.py
+│       ├── dev_guide_generator.py
+│       └── troubleshoot_generator.py
 │
 ├── tools/                      # 工具模块
 │   ├── github_tools.py         # GitHub API

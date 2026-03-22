@@ -864,15 +864,17 @@ onMounted(async () => {
 
 .send-btn {
   background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)) !important;
+  cursor: pointer !important;
+}
+
+.send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
 }
 
 .send-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.send-btn:disabled {
-  opacity: 0.6;
 }
 
 .send-icon {

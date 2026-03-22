@@ -15,12 +15,13 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-        rewrite: (path) => path // 保持原路径
+        ws: true,
+        rewrite: (path) => path
       },
       '/ws': {
         target: 'ws://localhost:8000',
         ws: true,
-        rewrite: (path) => path // 保持原路径
+        rewrite: (path) => path
       }
     }
   }

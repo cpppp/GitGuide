@@ -107,7 +107,7 @@
                  {{ currentDocTitle }}
                </h1>
              </div>
-             <div v-if="!isSpecialTab" class="markdown-content" v-html="renderMarkdown(currentDocContent)"></div>
+             <div v-if="!isSpecialTab" ref="markdownContainerRef" class="markdown-content" v-html="renderMarkdown(currentDocContent)"></div>
              <div v-else-if="activeTab === 'atlas'" class="component-content">
                <CodeAtlas :result="store.result" :loading="false" />
              </div>
@@ -136,13 +136,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAnalysisStore } from '@/stores/analysis'
 import { useSettingsStore } from '@/stores/settings'
 import { storeToRefs } from 'pinia'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
+import mermaid from 'mermaid'
 import { getFavorites, addFavorite, removeFavorite } from '@/api/analyze'
 import { ElMessage } from 'element-plus'
 import CodeAtlas from '@/components/CodeAtlas.vue'
@@ -155,6 +156,7 @@ const settingsStore = useSettingsStore()
 const { language } = storeToRefs(settingsStore)
 
 const activeTab = ref('quick_start')
+const markdownContainerRef = ref(null)
 
 const docMenuItems = [
   { name: 'quick_start', label: '快速入门', labelEn: 'Quick Start', icon: '⚡' },
@@ -230,6 +232,101 @@ marked.setOptions({
   }
 })
 
+// 初始化 mermaid
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  themeVariables: {
+    primaryColor: '#3d5a6c',
+    primaryTextColor: '#2c3e4a',
+    primaryBorderColor: '#3d5a6c',
+    lineColor: '#8b7355',
+    secondaryColor: '#c4a35a',
+    tertiaryColor: '#f5f5f5'
+  },
+  flowchart: {
+    useMaxWidth: true,
+    htmlLabels: true
+  }
+})
+
+async function renderMermaidDiagrams() {
+  if (!markdownContainerRef.value) {
+    console.warn('Mermaid: container ref not found')
+    return
+  }
+
+  const mermaidBlocks = markdownContainerRef.value.querySelectorAll('pre code.language-mermaid')
+  console.log('Mermaid: found language-mermaid blocks:', mermaidBlocks.length)
+
+  const allCodeBlocks = markdownContainerRef.value.querySelectorAll('pre code')
+  console.log('Mermaid: total code blocks:', allCodeBlocks.length)
+
+  allCodeBlocks.forEach((block, index) => {
+    const pre = block.parentElement
+    let code = block.textContent.trim()
+    const isMermaidByClass = block.classList.contains('language-mermaid')
+    const isMermaidByContent = code.startsWith('graph') || code.startsWith('flowchart') ||
+                              code.startsWith('sequenceDiagram') || code.startsWith('classDiagram') ||
+                              code.startsWith('stateDiagram') || code.startsWith('erDiagram') ||
+                              code.startsWith('gantt') || code.startsWith('pie') ||
+                              code.startsWith('journey') || code.startsWith('requirement')
+
+    if (isMermaidByClass || isMermaidByContent) {
+      console.log('Mermaid: found mermaid block by', isMermaidByClass ? 'class' : 'content', 'at index', index)
+      console.log('Mermaid: code preview:', code.substring(0, 200))
+
+      if (!code.trim()) return
+
+      code = fixMermaidSyntax(code)
+
+      const container = document.createElement('div')
+      container.className = 'mermaid-diagram'
+
+      pre.replaceWith(container)
+
+      mermaid.render(
+        `mermaid-svg-${Date.now()}-${index}`,
+        code
+      ).then(({ svg }) => {
+        container.innerHTML = svg
+        console.log('Mermaid: successfully rendered block', index)
+      }).catch((error) => {
+        console.error('Mermaid render error:', error)
+        container.innerHTML = `<pre class="mermaid-error">${error.message}\n\n${code}</pre>`
+      })
+    }
+  })
+}
+
+function fixMermaidSyntax(code) {
+  let fixed = code
+
+  if (code.includes('<|--') || code.includes('--|>') || code.includes('*--') || code.includes('--*')) {
+    fixed = code
+      .replace(/<\|--/g, '-->')
+      .replace(/--\|>/g, '-->')
+      .replace(/\*--/g, '-->')
+      .replace(/--\*/g, '-->')
+
+    const lines = fixed.split('\n')
+    const filteredLines = lines.filter(line => {
+      const trimmed = line.trim()
+      return !trimmed.startsWith('classDef') && !trimmed.startsWith('class ')
+    })
+    fixed = filteredLines.join('\n')
+
+    console.log('Mermaid: fixed class diagram syntax to flowchart')
+  }
+
+  fixed = fixed.replace(/\[([^\]]*[\(\)\/\\][^\]]*)\]/g, (match, content) => {
+    const cleaned = content.replace(/[\(\)\/\\]/g, ' ').trim()
+    return `[${cleaned}]`
+  })
+
+  return fixed
+}
+
 function renderMarkdown(content) {
   if (!content) return ''
   return marked(content)
@@ -285,8 +382,17 @@ async function loadFavorites() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadFavorites()
+  await nextTick()
+  renderMermaidDiagrams()
+})
+
+watch(activeTab, async () => {
+  if (!isSpecialTab.value) {
+    await nextTick()
+    renderMermaidDiagrams()
+  }
 })
 </script>
 
@@ -705,6 +811,25 @@ onMounted(() => {
   height: 1px;
   background: var(--border-light);
   margin: 20px 0;
+}
+
+.markdown-content :deep(.mermaid-diagram) {
+  background: var(--bg-warm);
+  padding: 20px;
+  border-radius: var(--radius-md);
+  margin: 16px 0;
+  overflow-x: auto;
+}
+
+.markdown-content :deep(.mermaid-diagram svg) {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-content :deep(.mermaid-error) {
+  color: var(--danger-color, #a6555d);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* 导出操作栏 */

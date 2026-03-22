@@ -67,6 +67,7 @@ export const useAnalysisStore = defineStore('analysis', () => {
         progress.value = 100
         progressMessage.value = '分析完成！'
         stopPolling()
+        window.dispatchEvent(new CustomEvent('analysis-completed', { detail: data.result }))
       } else if (data.type === 'error') {
         status.value = 'failed'
         error.value = data.error
