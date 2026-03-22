@@ -660,6 +660,7 @@ onMounted(async () => {
   display: flex;
   gap: 12px;
   max-width: 85%;
+  margin-bottom: 16px;
 }
 
 .message.user {

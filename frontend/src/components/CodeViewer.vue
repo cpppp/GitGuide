@@ -62,6 +62,7 @@ import 'prismjs/components/prism-go'
 import 'prismjs/components/prism-rust'
 import 'prismjs/components/prism-c'
 import 'prismjs/components/prism-cpp'
+import 'prismjs/themes/prism-solarizedlight.css'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -244,8 +245,28 @@ watch(() => props.filePath, (newVal) => {
 .code-container {
   flex: 1;
   overflow: auto;
-  background: #1e1e1e;
+  background: #fafafa;
   border-radius: 8px;
+}
+
+:deep(.el-drawer__body) {
+  background: #fafafa !important;
+  padding: 0 !important;
+}
+
+:deep(.el-drawer__header) {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e0e0e0 !important;
+  margin-bottom: 0 !important;
+  padding: 12px 16px !important;
+}
+
+:deep(.el-drawer__title) {
+  color: #333333 !important;
+}
+
+:deep(.el-drawer__close-btn) {
+  color: #666666 !important;
 }
 
 .code-pre {
